@@ -211,7 +211,7 @@ In CDECAD mode, a player's main bank balance **is** the bank account of the civi
 - Balances are cached for 5 seconds to stay under the CAD's request limit. A change made in LWK Bank shows immediately; a change made on the website can take up to 5 seconds to appear here.
 - On ESX, business accounts are held in LWK Bank rather than `esx_addonaccount`.
 - Exports from the old banks that look up a player by citizenid or license won't find a CDECAD civilian. Business and shared account exports work as usual.
-- Switching an existing server to CDECAD mode starts players fresh. Their savings, cards, loans, contacts and shared-account memberships are tied to their old character ID and don't carry over to their civilian.
+- **Switching an existing server to CDECAD.** Bank data from before CDECAD (accounts, savings, cards, loans, contacts, credit score) is saved under the player's character. The first time they open the bank at a branch with a civilian selected, they're asked whether to move it, together with the character's framework bank money, to that civilian. It moves once, to the first civilian they say yes for; saying no asks again next session. Needs Qbox, QBCore or ESX underneath (standalone CDECAD servers have nothing to move).
 
 ## Switching from another bank
 

@@ -35,9 +35,33 @@ RegisterNUICallback('close', function(_, cb)
     cb({})
 end)
 
+-- CDECAD mode: once, offer to move the player's bank from before CDECAD to their civilian
+-- (server/cdecad.lua decides whether there's anything to move).
+local prompting = false
+local function offerCdecadMove()
+    if not GlobalState.lwk_bank_cdecadMove then return end
+    local offer = lib.callback.await('lwk_bank:cdecadOffer', false)
+    if not offer then return end
+    local answer = lib.alertDialog({
+        header = L('cdecad_move_title'),
+        content = L('cdecad_move_body', offer.name, offer.bank),
+        centered = true, cancel = true,
+        labels = { confirm = L('cdecad_move_yes'), cancel = L('cdecad_move_no') },
+    })
+    local moved = lib.callback.await('lwk_bank:cdecadMove', false, answer == 'confirm')
+    if answer == 'confirm' then
+        Notify(moved and L('cdecad_moved', offer.name) or L('err_cdecad_move'), moved and 'success' or 'error')
+    end
+end
+
 --- Opens the bank ('bank') or the ATM flow ('atm'). Returns false if the server refused.
 function OpenBank(mode)
-    if isOpen then return false end
+    if isOpen or prompting then return false end
+    if mode ~= 'atm' then
+        prompting = true
+        pcall(offerCdecadMove)
+        prompting = false
+    end
     local data = lib.callback.await('lwk_bank:open', false, mode)
     if not data then
         Notify(L('err_not_here'), 'error')

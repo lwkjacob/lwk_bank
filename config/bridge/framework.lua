@@ -298,6 +298,47 @@ function Bridge.removeMoney(src, kind, amount, reason)
     return p.Functions.RemoveMoney(kind, amount, reason) == true
 end
 
+-- CDECAD mode on top of a framework: the character behind the civilian. LWK Bank data from
+-- before CDECAD is saved under this id, and its framework bank money is no longer shown;
+-- server/cdecad.lua offers to move both to the civilian.
+function Bridge.characterIdentifier(src)
+    if not cad or base == 'none' then return nil end
+    local p = player(src)
+    if not p then return nil end
+    if base == 'esx' then return p.getIdentifier() end
+    return p.PlayerData.citizenid
+end
+
+function Bridge.characterBank(src)
+    local p = cad and player(src)
+    if not p then return 0 end
+    if base == 'esx' then
+        local acc = p.getAccount('bank')
+        return acc and acc.money or 0
+    end
+    return p.Functions.GetMoney('bank') or 0
+end
+
+function Bridge.addCharacterBank(src, amount, reason)
+    local p = cad and player(src)
+    if not p or amount <= 0 then return false end
+    if base == 'esx' then
+        p.addAccountMoney('bank', amount, reason)
+        return true
+    end
+    return p.Functions.AddMoney('bank', amount, reason) ~= false
+end
+
+function Bridge.removeCharacterBank(src, amount, reason)
+    local p = cad and player(src)
+    if not p or amount <= 0 or Bridge.characterBank(src) < amount then return false end
+    if base == 'esx' then
+        p.removeAccountMoney('bank', amount, reason)
+        return true
+    end
+    return p.Functions.RemoveMoney('bank', amount, reason) == true
+end
+
 function Bridge.sourceOf(identifier)
     if cad then
         identifier = tostring(identifier)
