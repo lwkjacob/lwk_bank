@@ -4,7 +4,7 @@ A free, open-source bank for FiveM by **LWK Development**. Animated 3D UI, real 
 
 ![Overview](.github/showcase.png)
 
-Works with **Qbox, QBCore and ESX** (detected automatically).
+Works with **Qbox, QBCore and ESX** (detected automatically), and with **[CDECAD](#cdecad)**, where a player's bank balance is their [CDECAD](https://cdecad.com/) civilian's account.
 
 ## Features
 
@@ -31,6 +31,7 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | qbox | ✅ | |
 | qb-core | ✅ | |
 | esx | ✅ | |
+| CDECAD | ✅ | Set `framework = 'cdecad'`. Runs alone or on top of the three above. See [CDECAD](#cdecad) |
 | custom | ⚠️ | Requires manual implementation (`config/bridge/framework.lua`) |
 
 | Interactions | Status | Notes |
@@ -83,7 +84,8 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | --- | --- |
 | [ox_lib](https://github.com/overextended/ox_lib) | callbacks, notifications, commands, progress bar, cron |
 | [oxmysql](https://github.com/overextended/oxmysql) | database |
-| qbx_core, qb-core **or** es_extended | your framework |
+| qbx_core, qb-core **or** es_extended | your framework (optional in CDECAD mode) |
+| CDECAD *(optional)* | the CDECAD resource and its `server.cfg` convars, for [CDECAD mode](#cdecad) |
 | ox_target or qb-target *(optional)* | look-at interaction. Without one, players get a "Press E" prompt |
 | ox_inventory, qb-inventory or qs-inventory *(optional)* | cards and receipts as items |
 | okokBilling / esx_billing / QBCore invoices *(optional)* | the Bills tab |
@@ -177,6 +179,40 @@ Change `bankName`, `accent` (any hex colour; text on it switches between dark an
 
 `notify` in `config/config.lua` picks where messages appear: `ox` (ox_lib), `okok` (okokNotify), `wasabi` (wasabi_notify), `esx` or `qb` (the framework's own; on Qbox, `qb` uses qbx_core's). `auto` uses okokNotify or wasabi_notify if one is running, otherwise ox_lib.
 
+## CDECAD
+
+In CDECAD mode, a player's main bank balance **is** the bank account of the civilian they picked with `/setciv`. The CDECAD website, the CDECAD phone app, cde-economy and LWK Bank all show the same number, because there is only one: LWK Bank reads and moves it through the CAD's API instead of keeping its own copy.
+
+**Setup:**
+
+1. Keep the CDE CAD convars you already have in `server.cfg`. LWK Bank reads the same ones, and picks up a console `set` without a restart:
+   ```cfg
+   set CDE_CAD_API_URL "https://your-cdecad-instance.com/api"
+   set CDE_CAD_API_KEY "your-fivem-api-key"
+   set CDE_CAD_RESOURCE "CDECAD"   # only if you renamed the CDECAD folder
+   ```
+2. In `config/config.lua`, set `framework = 'cdecad'` and `billing = 'none'`. With no framework installed, `auto` picks CDECAD on its own, but on a Qbox, QBCore or ESX server it picks the framework, so set it.
+3. Start CDECAD before LWK Bank:
+   ```cfg
+   ensure CDECAD
+   ensure lwk_bank
+   ```
+
+**What changes:**
+
+- **Who the player is.** The active `/setciv` civilian, by SSN. A player with no civilian selected is told to run `/setciv` when they open the bank. Each civilian has their own cards, loans, savings, contacts and credit score, so switching civilians switches all of it.
+- **Cash, jobs and gangs** still come from Qbox, QBCore or ESX when one is running, so business accounts for bosses keep working. With no framework, cash is a wallet per civilian stored in LWK Bank, and there are no business accounts because nobody has a job.
+- **Money moves atomically on the CAD.** It checks the balance and debits in one step, refuses frozen accounts, and a retried deposit is never paid twice.
+
+**What to know:**
+
+- Your framework's salaries and bank charges still go to the framework's bank, which LWK Bank no longer shows in this mode. Pay wages into CDECAD instead, for example with cde-economy's jobs.
+- Set `billing = 'none'`. Framework bills are stored under the framework's character ID, and in this mode a player is their civilian's SSN, so those bills would never show up. CDECAD's own invoices are paid from the CDECAD phone or website.
+- Balances are cached for 5 seconds to stay under the CAD's request limit. A change made in LWK Bank shows immediately; a change made on the website can take up to 5 seconds to appear here.
+- On ESX, business accounts are held in LWK Bank rather than `esx_addonaccount`.
+- Exports from the old banks that look up a player by citizenid or license won't find a CDECAD civilian. Business and shared account exports work as usual.
+- **Switching an existing server to CDECAD.** Bank data from before CDECAD (accounts, savings, cards, loans, contacts, credit score) is saved under the player's character. The first time they open the bank at a branch with a civilian selected, they're asked whether to move it, together with the character's framework bank money, to that civilian. It moves once, to the first civilian they say yes for; saying no asks again next session. Needs Qbox, QBCore or ESX underneath (standalone CDECAD servers have nothing to move).
+
 ## Switching from another bank
 
 LWK Bank replaces **Renewed-Banking, qb-banking, qb-management and okokBanking**. It `provide`s their names and answers their exports. So job scripts, boss menus, shops (e.g. lation_shops) and anything else written for your old bank keep working, with their money in LWK Bank business accounts:
@@ -235,7 +271,7 @@ exports.lwk_bank:RemoveBusinessMoney('mechanic', 200, 'Parts')     --> true/fals
 exports.lwk_bank:GetBusinessBalance('mechanic')                    --> number
 ```
 
-Players' main account **is** their framework bank money, so anything that pays salaries or charges bank money through your framework shows up in LWK Bank automatically.
+Players' main account **is** their framework bank money, so anything that pays salaries or charges bank money through your framework shows up in LWK Bank automatically. In [CDECAD mode](#cdecad) it is their civilian's CDECAD account instead.
 
 ## Logs
 

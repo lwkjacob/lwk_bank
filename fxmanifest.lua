@@ -45,6 +45,7 @@ server_scripts {
   'server/compat.lua',
   'server/import.lua',
   'server/integrations.lua',
+  'server/cdecad.lua',
 }
 
 client_scripts {
