@@ -205,7 +205,7 @@ local function nudge(src)
     local now = GetGameTimer()
     if nudged[src] and now - nudged[src] < 10000 then return end
     nudged[src] = now
-    Notify(src, 'Select a civilian with /setciv to use the bank - your balance is your CDECAD civilian\'s account.', 'error')
+    Notify(src, L('err_setciv'), 'error')
 end
 AddEventHandler('playerDropped', function() nudged[source] = nil end)
 

@@ -17,6 +17,7 @@
     "err_not_here": "You need to be at a bank or ATM.",
     "err_atm_only": "That's only available at a bank branch.",
     "err_busy": "Still processing your last request.",
+    "err_setciv": "Select a civilian with /setciv to use the bank - your balance is your CDECAD civilian's account.",
     "err_disabled": "That feature is turned off on this server.",
     "err_amount": "Enter an amount above zero.",
     "err_name": "Enter a name.",
