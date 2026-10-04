@@ -285,6 +285,7 @@ In `/bankconfig` → Logs:
 - Made by **LWK Development**.
 - Sounds are CC0. See `web/dist/sounds/CREDITS.txt`.
 - Fonts: Archivo and JetBrains Mono (SIL Open Font License), bundled through Fontsource.
+- UI libraries in the built bundle: React and three.js (MIT), GSAP ([standard no-charge license](https://gsap.com/standard-license)).
 
 ## Support
 
@@ -300,4 +301,8 @@ I recommend and personally use [RocketNode](https://rocketnode.us/lwkdev) for ho
 
 ## License
 
-[MIT](LICENSE)
+[GPL-3.0](LICENSE) © LWK Development.
+
+You can use, modify and share LWK Bank freely, on any server. If you distribute it or a modified version, it must stay open source under the same license, with the full source code included, so it can't be encrypted, escrowed or made closed source.
+
+Bundled third-party parts keep their own licenses (see Credits).
