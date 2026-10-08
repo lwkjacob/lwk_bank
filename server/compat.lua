@@ -1,6 +1,7 @@
 -- Drop-in replacement for other banks. Scripts written for Renewed-Banking, qb-banking,
--- qb-management or okokBanking keep calling their exports (exports['qb-banking']:AddMoney
--- ...) and LWK Bank answers them: fxmanifest `provide`s those names, and each export is
+-- qb-management, okokBanking, fd_banking, tgg-banking, tgiann-bank, wasabi_banking or
+-- p_banking keep calling their exports (exports['qb-banking']:AddMoney ...) and LWK Bank
+-- answers them: fxmanifest `provide`s those names, and each export is
 -- registered under the other resource's name below (the same trick Renewed-Banking uses
 -- for qb-management). Society/job/gang accounts map to LWK business accounts; named
 -- shared accounts map to LWK shared accounts. Player bank money stays framework money.
@@ -239,7 +240,132 @@ local okok = {
     end,
 }
 
-local PROVIDES = { ['Renewed-Banking'] = renewed, ['qb-banking'] = qbBanking, ['qb-management'] = qbManagement, okokBanking = okok }
+-- fd_banking (qb-management style exports, with a reason) --------------------------------
+local fdBanking = {
+    GetAccount = balanceOf,
+    GetGangAccount = balanceOf,
+    AddMoney = function(society, amount, reason) return add(Compat.named(society, true), amount, reason) end,
+    AddGangMoney = function(gang, amount, reason) return add(Compat.named(gang, true), amount, reason) end,
+    RemoveMoney = function(society, amount, reason) return remove(Compat.named(society, false), amount, reason) end,
+    RemoveGangMoney = function(gang, amount, reason) return remove(Compat.named(gang, false), amount, reason) end,
+}
+
+-- tgg-banking ---------------------------------------------------------------------------
+local tgg = {
+    GetSocietyAccountMoney = function(society)
+        local row = Compat.named(society, false)
+        return row and Accounts.balance(row) or nil
+    end,
+    AddSocietyMoney = function(society, amount) return add(Compat.named(society, true), amount) end,
+    RemoveSocietyMoney = function(society, amount) return remove(Compat.named(society, false), amount) end,
+    CreateBusinessAccount = function(society, startBalance, displayName)
+        local row, created = Compat.business(society, true)
+        if not row then return { success = false, error = 'invalid society' } end
+        if created and Logic.text(displayName, 1, 48) then
+            MySQL.update.await('UPDATE lwk_bank_accounts SET name = ? WHERE id = ?', { Logic.text(displayName, 1, 48), row.id })
+        end
+        if created and units(startBalance) then add(row, startBalance) end
+        return { success = true }
+    end,
+}
+
+-- tgiann-bank ---------------------------------------------------------------------------
+local tgiann = {
+    GetJobAccountBalance = balanceOf,
+    AddJobMoney = function(job, amount) return add(Compat.named(job, true), amount) end,
+    RemoveJobMoney = function(job, amount) return remove(Compat.named(job, false), amount) end,
+}
+
+-- wasabi_banking: (accountType, accountID, amount). 'society' is a job/gang account; 'bank'
+-- and 'cash' are the player's framework money, by server id or identifier. Savings and
+-- shared accounts are addressed by wasabi's own ids, which don't exist here: those return false.
+local function playerSource(id)
+    if type(id) == 'number' then return GetPlayerName(id) and id or nil end
+    return type(id) == 'string' and Bridge.sourceOf(id) or nil
+end
+
+local function wasabiMove(accountType, id, amount, adding)
+    local amt = units(amount)
+    if not amt then return false end
+    if accountType == 'society' then
+        if adding then return add(Compat.named(id, true), amt) end
+        return remove(Compat.named(id, false), amt)
+    end
+    if accountType ~= 'bank' and accountType ~= 'cash' then return false end
+    local src = playerSource(id)
+    if src then
+        if adding then return Bridge.addMoney(src, accountType, amt, 'wasabi_banking') end
+        return Bridge.removeMoney(src, accountType, amt, 'wasabi_banking')
+    end
+    if accountType == 'bank' and type(id) == 'string' then -- offline player, by identifier
+        if adding then return Bridge.addBankOffline(id, amt) end
+        return Bridge.removeBankOffline(id, amt)
+    end
+    return false
+end
+
+local wasabi = {
+    AddMoney = function(accountType, id, amount) return wasabiMove(accountType, id, amount, true) end,
+    RemoveMoney = function(accountType, id, amount) return wasabiMove(accountType, id, amount, false) end,
+    GetAccountBalance = function(id, accountType)
+        if accountType == 'society' then
+            local row = Compat.named(id, false)
+            return row and Accounts.balance(row) or false
+        end
+        local src = accountType == 'bank' and playerSource(id)
+        return src and Bridge.getMoney(src, 'bank') or false
+    end,
+    CreateJobAccount = createGroupAccount,
+    Transaction = function(identifier, reason, amount, transType, account)
+        if account == 'personal' then record(identifier, amount, transType == 'deposit', reason) end
+    end,
+}
+
+-- p_banking: one identifier that may be a job name, an IBAN or a player identifier --------
+local function pAccount(id, create)
+    -- A player's identifier wins over an IBAN: IBANs can be customised, so matching the
+    -- IBAN first would let someone claim another player's identifier as their IBAN.
+    local row = Compat.business(id, false) or playerAccount(id)
+    if row then return row end
+    local iban = Logic.iban(id)
+    row = iban and Accounts.byIban(iban)
+    if row then return row end
+    if create then return Compat.business(id, true) end
+end
+
+local pBanking = {
+    getAccountMoney = function(id)
+        local row = pAccount(id, false)
+        return row and Accounts.balance(row) or 0
+    end,
+    addAccountMoney = function(id, amount) return add(pAccount(id, true), amount) end,
+    removeAccountMoney = function(id, amount) return remove(pAccount(id, false), amount) end,
+    generateUniqueIBAN = function() return Accounts.newIban() end,
+}
+
+-- esx_society is ESX's boss-menu resource, not a bank: it keeps society money in
+-- esx_addonaccount, which is where LWK Bank keeps ESX business balances too, so they
+-- work side by side. On a server that runs a different boss menu, answer the lookup
+-- other scripts make before paying a society. Never while the real one is running.
+local function society(name)
+    name = strip(name)
+    if not name then return nil end
+    local account = 'society_' .. name
+    return { name = name, label = Bridge.groupLabel(name) or name, account = account, datastore = account, inventory = account }
+end
+local function esxSocietyRunning() return GetResourceState('esx_society') == 'started' end
+
+AddEventHandler('__cfx_export_esx_society_GetSociety', function(setCB)
+    if not esxSocietyRunning() then setCB(society) end
+end)
+AddEventHandler('esx_society:getSociety', function(name, cb)
+    if not esxSocietyRunning() and cb then cb(society(name)) end
+end)
+
+local PROVIDES = {
+    ['Renewed-Banking'] = renewed, ['qb-banking'] = qbBanking, ['qb-management'] = qbManagement, okokBanking = okok,
+    fd_banking = fdBanking, ['tgg-banking'] = tgg, ['tgiann-bank'] = tgiann, wasabi_banking = wasabi, p_banking = pBanking,
+}
 for resource, fns in pairs(PROVIDES) do
     for name, fn in pairs(fns) do handle(resource, name, fn) end
 end

@@ -15,7 +15,7 @@ Works with **Qbox, QBCore and ESX** (detected automatically), and with **[CDECAD
 - **Loans** with plans, terms, a 300–850 credit score that moves with how you pay, a grace period, late fees and auto-collection.
 - **Bills** read from okokBilling, esx_billing or QBCore phone invoices, plus financed vehicles from jg-dealerships. Pay one or all of them, and print receipts as items.
 - **Accounts**: personal, shared (members with per-permission access) and business accounts for job and gang bosses. On ESX, business accounts use `esx_addonaccount`, so boss menus keep working.
-- **Drop-in replacement** for Renewed-Banking, qb-banking, qb-management and okokBanking: scripts that call their exports keep working, and `/bankimport` brings their balances over.
+- **Drop-in replacement** for Renewed-Banking, qb-banking, qb-management, okokBanking, fd_banking, tgg-banking, tgiann-bank, wasabi_banking and p_banking: scripts that call their exports keep working, and `/bankimport` brings balances over from the first four.
 - **Notifications** through ox_lib, okokNotify, wasabi_notify, or the ESX / QBCore / Qbox built-ins.
 - **Logs** to a Discord webhook and/or ox_lib's logger. Big amounts are flagged.
 - **Admin tools**: `/bankconfig` (in-game settings), plus commands to look up players, reset PINs, unfreeze cards and set credit scores.
@@ -71,6 +71,12 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | qb-banking | ✅ | Drop-in replacement, balances imported |
 | qb-management | ✅ | Drop-in replacement, balances imported |
 | okokBanking | ✅ | Drop-in replacement, balances imported |
+| fd_banking | ✅ | Drop-in replacement (exports) |
+| tgg-banking | ✅ | Drop-in replacement (exports) |
+| tgiann-bank | ✅ | Drop-in replacement (exports) |
+| wasabi_banking | ✅ | Drop-in replacement (exports) |
+| p_banking | ✅ | Drop-in replacement (exports) |
+| esx_society | ✅ | Works alongside it (same society money); answers its society lookup when it isn't installed |
 | esx_addonaccount | ✅ | Keeps holding society money on ESX when running; without it the bank holds it |
 
 | Other | Status | Notes |
@@ -106,7 +112,7 @@ Everything is detected automatically. Each one can also be forced in `config/con
    ```
    On ESX, the `admin` and `superadmin` groups also work (see `admin.esxGroups` in `config/config.lua`).
 4. **Add the items** (skip this if you don't use an inventory). See [Items](#items) below.
-5. **Remove your old bank** so two banks don't fight over the same counters and exports. Coming from Renewed-Banking, qb-banking, qb-management or okokBanking? Other scripts that call its exports keep working with LWK Bank, and you can bring the balances over: see [Switching from another bank](#switching-from-another-bank).
+5. **Remove your old bank** so two banks don't fight over the same counters and exports. Coming from Renewed-Banking, qb-banking, qb-management, okokBanking, fd_banking, tgg-banking, tgiann-bank, wasabi_banking or p_banking? Other scripts that call its exports keep working with LWK Bank, and you can bring the balances over: see [Switching from another bank](#switching-from-another-bank).
 6. **Restart the server.** The database tables are created automatically on first start. `sql/install.sql` is there if you'd rather run it yourself.
 
 That's it. Join the server, walk up to a bank counter or ATM, and press the target or E.
@@ -215,7 +221,7 @@ In CDECAD mode, a player's main bank balance **is** the bank account of the civi
 
 ## Switching from another bank
 
-LWK Bank replaces **Renewed-Banking, qb-banking, qb-management and okokBanking**. It `provide`s their names and answers their exports. So job scripts, boss menus, shops (e.g. lation_shops) and anything else written for your old bank keep working, with their money in LWK Bank business accounts:
+LWK Bank replaces **Renewed-Banking, qb-banking, qb-management, okokBanking, fd_banking, tgg-banking, tgiann-bank, wasabi_banking and p_banking**. It `provide`s their names and answers their exports. So job scripts, boss menus, shops (e.g. lation_shops) and anything else written for your old bank keep working, with their money in LWK Bank business accounts:
 
 | Old bank | Exports that keep working |
 | --- | --- |
@@ -223,6 +229,15 @@ LWK Bank replaces **Renewed-Banking, qb-banking, qb-management and okokBanking**
 | qb-banking | `AddMoney`, `RemoveMoney`, `AddGangMoney`, `RemoveGangMoney`, `GetAccount`, `GetGangAccount`, `GetAccountBalance`, `CreatePlayerAccount`, `CreateJobAccount`, `CreateGangAccount`, `CreateBankStatement` |
 | qb-management | `GetAccount`, `GetGangAccount`, `AddMoney`, `RemoveMoney`, `AddGangMoney`, `RemoveGangMoney` |
 | okokBanking | `GetAccount`, `AddMoney`, `RemoveMoney`, `AddTransaction`, `GetPlayerTransactions` |
+| fd_banking | `GetAccount`, `GetGangAccount`, `AddMoney`, `RemoveMoney`, `AddGangMoney`, `RemoveGangMoney` |
+| tgg-banking | `GetSocietyAccountMoney`, `AddSocietyMoney`, `RemoveSocietyMoney`, `CreateBusinessAccount` |
+| tgiann-bank | `GetJobAccountBalance`, `AddJobMoney`, `RemoveJobMoney` |
+| wasabi_banking | `GetAccountBalance`, `AddMoney`, `RemoveMoney` (for `society`, `bank` and `cash`), `CreateJobAccount`, `Transaction` |
+| p_banking | `getAccountMoney`, `addAccountMoney`, `removeAccountMoney` (by job name, IBAN or player identifier), `generateUniqueIBAN` |
+
+These are the society and money exports other scripts use. Each of those banks also has exports for its own features (its loans, cards, invoices, account freezing); those aren't provided. `/bankimport` covers Renewed-Banking, qb-banking, qb-management and okokBanking; the other banks' database layouts aren't public, so their balances can't be imported.
+
+**esx_society** isn't a bank: it is ESX's boss menu, and it keeps society money in `esx_addonaccount`, the same place LWK Bank keeps ESX business balances. Keep it installed and both show the same money. If you run a different boss menu, LWK Bank answers the `esx_society:getSociety` lookup other scripts make.
 
 **Steps:**
 
