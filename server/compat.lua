@@ -380,6 +380,21 @@ for resource, fns in pairs(PROVIDES) do
     for name, fn in pairs(fns) do handle(resource, name, fn) end
 end
 
+-- Scripts cache the export functions they got from us under the old bank's name, and
+-- FiveM only drops that cache when a resource *of that name* stops (scheduler.lua). So
+-- announce it for every name answered here: without this, `restart lwk_bank` leaves
+-- every script that already called one of these exports holding a dead function.
+local function dropCallerCaches()
+    for resource in pairs(PROVIDES) do
+        if not Compat.realRunning(resource) then TriggerEvent('onServerResourceStop', resource) end
+    end
+    if not esxSocietyRunning() then TriggerEvent('onServerResourceStop', 'esx_society') end
+end
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then dropCallerCaches() end
+end)
+dropCallerCaches() -- on start too, in case the last instance didn't stop cleanly
+
 -- Tell the owner when an old bank is still installed, and what to do about it.
 CreateThread(function()
     for i = 0, GetNumResources() - 1 do
