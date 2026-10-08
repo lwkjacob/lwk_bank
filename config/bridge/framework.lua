@@ -452,6 +452,25 @@ function Bridge.groupLabel(name)
     return g and g.label
 end
 
+--- Every job and gang the framework knows: { [name] = label }.
+function Bridge.groups()
+    core()
+    local out = {}
+    local function take(groups)
+        for name, g in pairs(groups or {}) do out[name] = type(g) == 'table' and g.label or name end
+    end
+    if base == 'qbox' then
+        take(exports.qbx_core:GetJobs())
+        take(exports.qbx_core:GetGangs())
+    elseif base == 'qb' then
+        take(QB.Shared.Jobs)
+        take(QB.Shared.Gangs)
+    elseif base == 'esx' then
+        take(ESX.GetJobs())
+    end
+    return out
+end
+
 function Bridge.isAdmin(src)
     if IsPlayerAceAllowed(src, Cfg().admin.ace) then return true end
     local p = player(src)

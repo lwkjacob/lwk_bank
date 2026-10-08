@@ -130,8 +130,8 @@
     "tx_shop_purchase": "Shop purchase",
     "tx_shop_sale": "Shop sale",
     "import_tx": "Imported balance",
-    "cmd_import_help": "Import balances from another bank (Renewed-Banking, qb-banking, qb-management, okokBanking)",
-    "import_unknown": "Unknown source. Use: renewed, qb, qbmanagement or okok.",
+    "cmd_import_help": "Import balances from another bank",
+    "import_unknown": "Unknown source. Use: renewed, qb, qbmanagement, okok, fd, tgg, tgiann, wasabi or p.",
     "import_already": "%s was already imported (%s). Add 'force' to import again.",
     "import_no_tables": "No %s tables found in this database.",
     "import_preview": "Preview of the %s import (nothing changed yet):",
@@ -141,7 +141,8 @@
     "import_result": "Done: %s imported, %s empty society accounts skipped, %s failed (see server console).",
     "import_busy": "An import is already running. Try again when it finishes.",
     "err_bill_partial": "Not every bill could be paid. The ones left are still in Bills.",
-    "err_name_taken": "Another shared account already has that name."
+    "err_name_taken": "Another shared account already has that name.",
+    "import_not_running": "%s has to be installed and running for this import: LWK Bank asks it for each job's balance. Start it before lwk_bank, import, then remove it."
   },
   "ui": {
     "section_overview": "Overview",

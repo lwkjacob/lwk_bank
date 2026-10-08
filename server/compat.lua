@@ -10,8 +10,18 @@ Compat = {}
 
 local ALL_PERMS = json.encode({ deposit = true, withdraw = true, transfer = true, loans = true })
 
+--- True while the original bank is itself running. `provide` makes a provided name
+--- report this resource's state and path, so only a different path is the real one.
+function Compat.realRunning(resource)
+    return GetResourceState(resource) == 'started' and GetResourcePath(resource) ~= GetResourcePath(GetCurrentResourceName())
+end
+
+-- While the original bank still runs, its exports are left to it: nothing fights, and
+-- /bankimport can ask it for its balances before the owner removes it.
 local function handle(resource, name, fn)
-    AddEventHandler(('__cfx_export_%s_%s'):format(resource, name), function(setCB) setCB(fn) end)
+    AddEventHandler(('__cfx_export_%s_%s'):format(resource, name), function(setCB)
+        if not Compat.realRunning(resource) then setCB(fn) end
+    end)
 end
 
 local function strip(name)
@@ -370,15 +380,12 @@ for resource, fns in pairs(PROVIDES) do
     for name, fn in pairs(fns) do handle(resource, name, fn) end
 end
 
--- Two banks answering the same exports would fight over every call. `provide` makes a
--- provided name report this resource's state and path, so only a different path is the
--- real (old) bank running.
+-- Tell the owner when an old bank is still installed, and what to do about it.
 CreateThread(function()
-    local mine = GetResourcePath(GetCurrentResourceName())
     for i = 0, GetNumResources() - 1 do
         local res = GetResourceByFindIndex(i)
-        if PROVIDES[res] and GetResourceState(res) == 'started' and GetResourcePath(res) ~= mine then
-            print(('^1[lwk_bank] %s is also running. LWK Bank replaces it: remove or stop %s so they do not both answer its exports.^0'):format(res, res))
+        if PROVIDES[res] and Compat.realRunning(res) then
+            print(('^3[lwk_bank] %s is still running, so its exports are left to it. Import its balances with /bankimport, then remove %s: LWK Bank replaces it.^0'):format(res, res))
         end
     end
 end)

@@ -15,7 +15,7 @@ Works with **Qbox, QBCore and ESX** (detected automatically), and with **[CDECAD
 - **Loans** with plans, terms, a 300–850 credit score that moves with how you pay, a grace period, late fees and auto-collection.
 - **Bills** read from okokBilling, esx_billing or QBCore phone invoices, plus financed vehicles from jg-dealerships. Pay one or all of them, and print receipts as items.
 - **Accounts**: personal, shared (members with per-permission access) and business accounts for job and gang bosses. On ESX, business accounts use `esx_addonaccount`, so boss menus keep working.
-- **Drop-in replacement** for Renewed-Banking, qb-banking, qb-management, okokBanking, fd_banking, tgg-banking, tgiann-bank, wasabi_banking and p_banking: scripts that call their exports keep working, and `/bankimport` brings balances over from the first four.
+- **Drop-in replacement** for Renewed-Banking, qb-banking, qb-management, okokBanking, fd_banking, tgg-banking, tgiann-bank, wasabi_banking and p_banking: scripts that call their exports keep working, and `/bankimport` brings their balances over.
 - **Notifications** through ox_lib, okokNotify, wasabi_notify, or the ESX / QBCore / Qbox built-ins.
 - **Logs** to a Discord webhook and/or ox_lib's logger. Big amounts are flagged.
 - **Admin tools**: `/bankconfig` (in-game settings), plus commands to look up players, reset PINs, unfreeze cards and set credit scores.
@@ -71,11 +71,11 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | qb-banking | ✅ | Drop-in replacement, balances imported |
 | qb-management | ✅ | Drop-in replacement, balances imported |
 | okokBanking | ✅ | Drop-in replacement, balances imported |
-| fd_banking | ✅ | Drop-in replacement (exports) |
-| tgg-banking | ✅ | Drop-in replacement (exports) |
-| tgiann-bank | ✅ | Drop-in replacement (exports) |
-| wasabi_banking | ✅ | Drop-in replacement (exports) |
-| p_banking | ✅ | Drop-in replacement (exports) |
+| fd_banking | ✅ | Drop-in replacement, society balances imported |
+| tgg-banking | ✅ | Drop-in replacement, society balances imported |
+| tgiann-bank | ✅ | Drop-in replacement, society balances imported |
+| wasabi_banking | ✅ | Drop-in replacement, society balances imported |
+| p_banking | ✅ | Drop-in replacement, society balances imported |
 | esx_society | ✅ | Works alongside it (same society money); answers its society lookup when it isn't installed |
 | esx_addonaccount | ✅ | Keeps holding society money on ESX when running; without it the bank holds it |
 
@@ -235,23 +235,28 @@ LWK Bank replaces **Renewed-Banking, qb-banking, qb-management, okokBanking, fd_
 | wasabi_banking | `GetAccountBalance`, `AddMoney`, `RemoveMoney` (for `society`, `bank` and `cash`), `CreateJobAccount`, `Transaction` |
 | p_banking | `getAccountMoney`, `addAccountMoney`, `removeAccountMoney` (by job name, IBAN or player identifier), `generateUniqueIBAN` |
 
-These are the society and money exports other scripts use. Each of those banks also has exports for its own features (its loans, cards, invoices, account freezing); those aren't provided. `/bankimport` covers Renewed-Banking, qb-banking, qb-management and okokBanking; the other banks' database layouts aren't public, so their balances can't be imported.
+These are the society and money exports other scripts use. Each of those banks also has exports for its own features (its loans, cards, invoices, account freezing); those aren't provided.
 
 **esx_society** isn't a bank: it is ESX's boss menu, and it keeps society money in `esx_addonaccount`, the same place LWK Bank keeps ESX business balances. Keep it installed and both show the same money. If you run a different boss menu, LWK Bank answers the `esx_society:getSociety` lookup other scripts make.
 
-**Steps:**
+### Importing balances
 
-1. Stop the server, remove the old bank from `resources` (or its `ensure` line), and add LWK Bank. If both are running, LWK Bank prints a warning on start.
-2. Start the server and preview the import from the server console (or in game as an admin):
-   ```
-   bankimport renewed
-   ```
-   Sources: `renewed`, `qb` (qb-banking), `qbmanagement` (older qb-management `management_funds`), `okok`. The preview changes nothing. It shows how many accounts of each type would come over and how much money.
-3. Run it for real:
-   ```
-   bankimport renewed confirm
-   ```
-   Society, job and gang balances go to business accounts. Shared accounts keep their owner and members, and extra player accounts come over as personal accounts. Each source imports once; add `force` to repeat it.
+Every import previews first. `bankimport <source>` changes nothing: it shows how many accounts would come over and how much money. `bankimport <source> confirm` does it. Each source imports once (add `force` to repeat). Run it from the server console, or in game as an admin.
+
+**Renewed-Banking, qb-banking, qb-management, okokBanking** (sources `renewed`, `qb`, `qbmanagement`, `okok`): read from the old bank's database tables, so remove the old bank first.
+
+1. Stop the server, remove the old bank from `resources` (or its `ensure` line), and add LWK Bank.
+2. Start the server and run `bankimport renewed`, then `bankimport renewed confirm`.
+
+Society, job and gang balances go to business accounts. Shared accounts keep their owner and members, and extra player accounts come over as personal accounts.
+
+**fd_banking, tgg-banking, tgiann-bank, wasabi_banking, p_banking** (sources `fd`, `tgg`, `tgiann`, `wasabi`, `p`): these banks' database layouts aren't public, so LWK Bank asks the old bank itself for each job's and gang's balance. Keep it installed for the import.
+
+1. Add LWK Bank and start the old bank **before** it (its `ensure` line above `ensure lwk_bank`). While the old bank runs, LWK Bank leaves its exports to it and says so in the console.
+2. Run `bankimport tgg`, then `bankimport tgg confirm`.
+3. Stop the server, remove the old bank, start again. LWK Bank now answers its exports.
+
+This brings over job and gang (society) balances. Those banks' shared and extra personal accounts can't be read this way, so players need to empty them into their main account before you switch.
 
 Players' main bank balance is framework money in all of these banks, so it is already in LWK Bank and isn't imported. If the preview lists a type that is really players' main account (okokBanking stores one per player, usually `personal`), leave it out so it isn't counted twice: `bankimport okok confirm skip=personal`.
 

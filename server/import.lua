@@ -1,6 +1,11 @@
--- /bankimport <renewed|qb|qbmanagement|okok> [confirm] [skip=type,type] [force]
--- Moves balances from another bank's tables into LWK Bank. Without `confirm` it only
--- shows what it would import. Each source imports once (`force` to repeat).
+-- /bankimport <source> [confirm] [skip=type,type] [force]
+-- Moves balances from another bank into LWK Bank. Without `confirm` it only shows what
+-- it would import. Each source imports once (`force` to repeat).
+--   renewed | qb | qbmanagement | okok   read from that bank's database tables, so they
+--                                        work after the old bank is removed
+--   fd | tgg | tgiann | wasabi | p       those banks' tables aren't documented, so the old
+--                                        bank is asked for each job/gang balance through
+--                                        its own export: it must still be running
 -- Players' main bank money is framework money in every one of these banks, so it is
 -- already in place; this moves society/job/gang, shared and extra accounts.
 
@@ -73,6 +78,28 @@ local SOURCES = {
     end,
 }
 
+--- A source that asks the old bank itself: one balance per framework job and gang.
+local function fromExports(resource, read)
+    return function()
+        if not Compat.realRunning(resource) then return nil, resource end
+        local out = {}
+        for name, label in pairs(Bridge.groups()) do
+            local ok, balance = pcall(read, name)
+            balance = ok and tonumber(balance) or 0
+            if balance > 0 then
+                out[#out + 1] = { type = 'society', kind = 'business', name = name, label = label, balance = math.floor(balance) }
+            end
+        end
+        return out
+    end
+end
+
+SOURCES.fd = fromExports('fd_banking', function(name) return exports['fd_banking']:GetAccount(name) end)
+SOURCES.tgg = fromExports('tgg-banking', function(name) return exports['tgg-banking']:GetSocietyAccountMoney(name) end)
+SOURCES.tgiann = fromExports('tgiann-bank', function(name) return exports['tgiann-bank']:GetJobAccountBalance(name) end)
+SOURCES.wasabi = fromExports('wasabi_banking', function(name) return exports['wasabi_banking']:GetAccountBalance(name, 'society') end)
+SOURCES.p = fromExports('p_banking', function(name) return exports['p_banking']:getAccountMoney(name) end)
+
 local function apply(e)
     local balance = math.max(0, math.floor(tonumber(e.balance) or 0))
     -- Empty job/gang accounts are recreated on first use anyway; don't clutter with them.
@@ -117,7 +144,7 @@ local run -- the import itself, below the command
 lib.addCommand('bankimport', {
     help = L('cmd_import_help'),
     params = {
-        { name = 'source', type = 'string', help = 'renewed | qb | qbmanagement | okok' },
+        { name = 'source', type = 'string', help = 'renewed | qb | qbmanagement | okok | fd | tgg | tgiann | wasabi | p' },
         { name = 'options', type = 'longString', optional = true, help = 'confirm, skip=type,type, force' },
     },
 }, function(src, args)
@@ -134,8 +161,8 @@ lib.addCommand('bankimport', {
     local okRun, err = pcall(function()
         local done = MySQL.single.await('SELECT * FROM lwk_bank_imports WHERE source = ?', { name })
         if done and not force then return reply(src, { L('import_already', name, done.summary) }) end
-        local rows = read()
-        if not rows then return reply(src, { L('import_no_tables', name) }) end
+        local rows, mustRun = read()
+        if not rows then return reply(src, { mustRun and L('import_not_running', mustRun) or L('import_no_tables', name) }) end
         run(src, name, rows, skip, confirm)
     end)
     running = false
