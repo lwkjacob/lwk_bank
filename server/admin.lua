@@ -9,10 +9,18 @@ local function allowed(src)
 end
 
 --- A server id of an online player, or a raw citizenid/identifier for offline lookups.
+-- (Command params are left untyped: ox_lib's 'string' type rejects anything numeric,
+-- which would refuse server ids, numeric character ids and a card's last 4 digits.)
 local function resolve(arg)
-    local id = tonumber(arg)
+    arg = arg and tostring(arg) or ''
+    if arg == '' then return nil, nil end
+    -- A bare number is a server id when that player is online. 'char:<id>' forces an
+    -- identifier lookup, for frameworks whose character ids are numbers (ND_Core).
+    local forced = arg:match('^char:(.+)$')
+    local id = not forced and tonumber(arg)
     if id and GetPlayerName(id) then return Bridge.identifier(id), id end
-    return arg and tostring(arg) or nil, nil
+    local identifier = forced or arg
+    return identifier, Bridge.sourceOf(identifier)
 end
 
 local function reply(src, text)
@@ -21,7 +29,7 @@ end
 
 lib.addCommand('bankadmin', {
     help = L('cmd_lookup_help'),
-    params = { { name = 'target', type = 'string', help = L('cmd_target_help') } },
+    params = { { name = 'target', help = L('cmd_target_help') } },
 }, function(src, args)
     if not allowed(src) then return end
     local identifier = resolve(args.target)
@@ -49,7 +57,7 @@ end
 
 lib.addCommand('bankpin', {
     help = L('cmd_pin_help'),
-    params = { { name = 'target', type = 'string', help = L('cmd_target_help') }, { name = 'last4', type = 'string', help = L('cmd_last4_help') } },
+    params = { { name = 'target', help = L('cmd_target_help') }, { name = 'last4', help = L('cmd_last4_help') } },
 }, function(src, args)
     if not allowed(src) then return end
     local identifier, online = resolve(args.target)
@@ -64,7 +72,7 @@ end)
 
 lib.addCommand('bankunfreeze', {
     help = L('cmd_unfreeze_help'),
-    params = { { name = 'target', type = 'string', help = L('cmd_target_help') }, { name = 'last4', type = 'string', help = L('cmd_last4_help') } },
+    params = { { name = 'target', help = L('cmd_target_help') }, { name = 'last4', help = L('cmd_last4_help') } },
 }, function(src, args)
     if not allowed(src) then return end
     local identifier, online = resolve(args.target)
@@ -78,7 +86,7 @@ end)
 
 lib.addCommand('bankscore', {
     help = L('cmd_score_help'),
-    params = { { name = 'target', type = 'string', help = L('cmd_target_help') }, { name = 'score', type = 'number', help = '300-850' } },
+    params = { { name = 'target', help = L('cmd_target_help') }, { name = 'score', type = 'number', help = '300-850' } },
 }, function(src, args)
     if not allowed(src) or not Loans then return end
     local identifier, online = resolve(args.target)

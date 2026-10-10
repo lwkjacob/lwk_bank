@@ -115,7 +115,7 @@
     "cmd_pin_help": "Reset a card PIN (the owner gets the new one)",
     "cmd_unfreeze_help": "Unfreeze a card frozen by wrong PINs",
     "cmd_score_help": "Set a player's credit score",
-    "cmd_target_help": "Server ID, or citizenid/identifier for offline players",
+    "cmd_target_help": "Server id of an online player, or a character identifier (char:<id> forces an identifier)",
     "cmd_last4_help": "Last 4 digits of the card",
     "admin_score": "Credit score: %s",
     "admin_framework_bank": "framework bank",
