@@ -9,7 +9,7 @@ Config = {
     -- and gangs still come from qbox/qb/esx if one runs). Reads CDE_CAD_API_URL,
     -- CDE_CAD_API_KEY and CDE_CAD_RESOURCE from server.cfg. auto only picks cdecad when
     -- no framework is running, so set it explicitly on a qb/qbox/esx server.
-    framework = 'auto',        -- auto | qbox | qb | esx | cdecad
+    framework = 'auto',        -- auto | qbox | qb | esx | nd | cdecad
     inventory = 'auto',        -- auto | ox | qb | qs | none   (none = cards live only in the bank)
     target    = 'auto',        -- auto | ox | qb | none        (none = "Press E")
     -- none with cdecad: framework bills are keyed by citizenid/license, and in cdecad mode a

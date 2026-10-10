@@ -1,6 +1,9 @@
 -- Framework bridge (server). Everything framework-specific lives here so the rest of
 -- the resource only speaks: identifier, name, money (cash/bank), job, admin.
--- Detected once: qbx_core > qb-core > es_extended > CDECAD. Config.framework can force one.
+-- Detected once: qbx_core > qb-core > es_extended > ND_Core > CDECAD. Config.framework can force one.
+--
+-- ND_Core: the identifier is the character id (nd_characters.charid), money is the
+-- character's cash/bank, and the job is the group ND marks isJob.
 --
 -- CDECAD support (Config.framework = 'cdecad', or auto when CDECAD runs with no framework):
 --   * the player is their active /setciv civilian, set by CDECAD; identifier is its SSN, name is its name
@@ -32,6 +35,7 @@ local base = (Config.framework ~= 'auto' and Config.framework ~= 'cdecad' and Co
     or (present('qbx_core') and 'qbox')
     or (present('qb-core') and 'qb')
     or (present('es_extended') and 'esx')
+    or (present('ND_Core') and 'nd')
     or 'none'
 
 local fw = Config.framework == 'cdecad' and 'cdecad'
@@ -54,6 +58,43 @@ local function player(src)
     if base == 'qbox' then return exports.qbx_core:GetPlayer(src) end
     if base == 'qb' then return QB.Functions.GetPlayer(src) end
     if base == 'esx' then return ESX.GetPlayerFromId(src) end
+    if base == 'nd' then return exports.ND_Core:getPlayer(src) end
+end
+
+--- The character's own id as LWK Bank stores it (a string).
+local function characterId(p)
+    if base == 'esx' then return p.getIdentifier() end
+    if base == 'nd' then return tostring(p.id) end
+    return p.PlayerData.citizenid
+end
+
+--- Money on the framework's character: 'cash' | 'bank'.
+local function charGet(p, kind)
+    if base == 'esx' then
+        local acc = p.getAccount(moneyType(kind))
+        return acc and acc.money or 0
+    end
+    if base == 'nd' then return tonumber(p[kind]) or 0 end
+    return p.Functions.GetMoney(kind) or 0
+end
+
+local function charAdd(p, kind, amount, reason)
+    if base == 'esx' then
+        p.addAccountMoney(moneyType(kind), amount, reason)
+        return true
+    end
+    if base == 'nd' then return p.addMoney(kind, amount, reason) == true end
+    return p.Functions.AddMoney(kind, amount, reason) ~= false
+end
+
+-- Callers check the balance first: ND_Core's deductMoney, for one, would go negative.
+local function charRemove(p, kind, amount, reason)
+    if base == 'esx' then
+        p.removeAccountMoney(moneyType(kind), amount, reason)
+        return true
+    end
+    if base == 'nd' then return p.deductMoney(kind, amount, reason) == true end
+    return p.Functions.RemoveMoney(kind, amount, reason) == true
 end
 
 -- 'cash' | 'bank' -> the framework's account name
@@ -225,8 +266,7 @@ function Bridge.identifier(src)
     end
     local p = player(src)
     if not p then return nil end
-    if fw == 'esx' then return p.getIdentifier() end
-    return p.PlayerData.citizenid
+    return characterId(p)
 end
 
 function Bridge.name(src)
@@ -237,6 +277,7 @@ function Bridge.name(src)
     local p = player(src)
     if not p then return GetPlayerName(src) end
     if fw == 'esx' then return p.getName() end
+    if fw == 'nd' then return p.fullname or GetPlayerName(src) end
     local c = p.PlayerData.charinfo or {}
     return (('%s %s'):format(c.firstname or '', c.lastname or ''):gsub('^%s+', ''):gsub('%s+$', ''))
 end
@@ -249,11 +290,7 @@ function Bridge.getMoney(src, kind)
     end
     local p = player(src)
     if not p then return 0 end
-    if base == 'esx' then
-        local acc = p.getAccount(moneyType(kind))
-        return acc and acc.money or 0
-    end
-    return p.Functions.GetMoney(kind) or 0
+    return charGet(p, kind)
 end
 
 function Bridge.addMoney(src, kind, amount, reason)
@@ -269,11 +306,7 @@ function Bridge.addMoney(src, kind, amount, reason)
     end
     local p = player(src)
     if not p then return false end
-    if base == 'esx' then
-        p.addAccountMoney(moneyType(kind), amount, reason)
-        return true
-    end
-    return p.Functions.AddMoney(kind, amount, reason) ~= false
+    return charAdd(p, kind, amount, reason)
 end
 
 -- Checks the balance itself: never trust a framework to refuse an overdraft.
@@ -290,12 +323,8 @@ function Bridge.removeMoney(src, kind, amount, reason)
         end
     end
     local p = player(src)
-    if not p or Bridge.getMoney(src, kind) < amount then return false end
-    if base == 'esx' then
-        p.removeAccountMoney(moneyType(kind), amount, reason)
-        return true
-    end
-    return p.Functions.RemoveMoney(kind, amount, reason) == true
+    if not p or charGet(p, kind) < amount then return false end
+    return charRemove(p, kind, amount, reason)
 end
 
 -- CDECAD mode on top of a framework: the character behind the civilian. LWK Bank data from
@@ -305,38 +334,24 @@ function Bridge.characterIdentifier(src)
     if not cad or base == 'none' then return nil end
     local p = player(src)
     if not p then return nil end
-    if base == 'esx' then return p.getIdentifier() end
-    return p.PlayerData.citizenid
+    return characterId(p)
 end
 
 function Bridge.characterBank(src)
     local p = cad and player(src)
-    if not p then return 0 end
-    if base == 'esx' then
-        local acc = p.getAccount('bank')
-        return acc and acc.money or 0
-    end
-    return p.Functions.GetMoney('bank') or 0
+    return p and charGet(p, 'bank') or 0
 end
 
 function Bridge.addCharacterBank(src, amount, reason)
     local p = cad and player(src)
     if not p or amount <= 0 then return false end
-    if base == 'esx' then
-        p.addAccountMoney('bank', amount, reason)
-        return true
-    end
-    return p.Functions.AddMoney('bank', amount, reason) ~= false
+    return charAdd(p, 'bank', amount, reason)
 end
 
 function Bridge.removeCharacterBank(src, amount, reason)
     local p = cad and player(src)
-    if not p or amount <= 0 or Bridge.characterBank(src) < amount then return false end
-    if base == 'esx' then
-        p.removeAccountMoney('bank', amount, reason)
-        return true
-    end
-    return p.Functions.RemoveMoney('bank', amount, reason) == true
+    if not p or amount <= 0 or charGet(p, 'bank') < amount then return false end
+    return charRemove(p, 'bank', amount, reason)
 end
 
 function Bridge.sourceOf(identifier)
@@ -362,6 +377,11 @@ function Bridge.sourceOf(identifier)
         local p = ESX.GetPlayerFromIdentifier(identifier)
         return p and p.source
     end
+    if fw == 'nd' then
+        local id = tonumber(identifier)
+        local p = id and exports.ND_Core:getPlayers('id', id, true)[1]
+        return p and p.source
+    end
 end
 
 -- Bank money for a player who isn't online: edit the stored JSON directly.
@@ -378,6 +398,9 @@ function Bridge.addBankOffline(identifier, amount)
             "UPDATE users SET accounts = JSON_SET(accounts, '$.bank', CAST(JSON_EXTRACT(accounts, '$.bank') AS SIGNED) + ?) WHERE identifier = ?",
             { amount, identifier }) > 0
     end
+    if fw == 'nd' then
+        return MySQL.update.await('UPDATE nd_characters SET bank = bank + ? WHERE charid = ?', { amount, tonumber(identifier) }) > 0
+    end
     return false
 end
 
@@ -393,6 +416,10 @@ function Bridge.removeBankOffline(identifier, amount)
         return MySQL.update.await(
             "UPDATE users SET accounts = JSON_SET(accounts, '$.bank', CAST(JSON_EXTRACT(accounts, '$.bank') AS SIGNED) - ?) WHERE identifier = ? AND CAST(JSON_EXTRACT(accounts, '$.bank') AS SIGNED) >= ?",
             { amount, identifier, amount }) > 0
+    end
+    if fw == 'nd' then
+        return MySQL.update.await('UPDATE nd_characters SET bank = bank - ? WHERE charid = ? AND bank >= ?',
+            { amount, tonumber(identifier), amount }) > 0
     end
     return false
 end
@@ -414,6 +441,10 @@ function Bridge.offlineName(identifier)
         local row = MySQL.single.await('SELECT firstname, lastname FROM users WHERE identifier = ?', { identifier })
         return row and ('%s %s'):format(row.firstname, row.lastname) or identifier
     end
+    if fw == 'nd' then
+        local row = MySQL.single.await('SELECT firstname, lastname FROM nd_characters WHERE charid = ?', { tonumber(identifier) })
+        return row and ('%s %s'):format(row.firstname, row.lastname) or identifier
+    end
     return identifier
 end
 
@@ -423,6 +454,12 @@ function Bridge.getJob(src)
     if base == 'esx' then
         local j = p.getJob()
         return { name = j.name, label = j.label, grade = j.grade, isBoss = j.grade_name == 'boss' }
+    end
+    if base == 'nd' then
+        -- The job is the group marked isJob; a character can have none.
+        local j = p.job and p.jobInfo
+        if not j then return nil end
+        return { name = p.job, label = j.label or p.job, grade = j.rank or 0, isBoss = j.isBoss == true }
     end
     local j = p.PlayerData.job
     return { name = j.name, label = j.label, grade = j.grade and j.grade.level or 0, isBoss = j.isboss == true }
@@ -448,6 +485,8 @@ function Bridge.groupLabel(name)
         g = QB.Shared.Jobs[name] or QB.Shared.Gangs[name]
     elseif base == 'esx' then
         g = ESX.GetJobs()[name]
+    elseif base == 'nd' then
+        g = exports.ND_Core:getGroupData(name)
     end
     return g and g.label
 end
@@ -467,6 +506,8 @@ function Bridge.groups()
         take(QB.Shared.Gangs)
     elseif base == 'esx' then
         take(ESX.GetJobs())
+    elseif base == 'nd' then
+        for _, g in ipairs(exports.ND_Core:getAllGroups() or {}) do out[g.name] = g.label or g.name end
     end
     return out
 end
@@ -488,7 +529,7 @@ function Bridge.notify(src, message, kind)
 end
 
 if fw == 'none' then
-    print('^1[lwk_bank] No supported framework found (qbx_core, qb-core, es_extended, CDECAD). The bank will not work.^0')
+    print('^1[lwk_bank] No supported framework found (qbx_core, qb-core, es_extended, ND_Core, CDECAD). The bank will not work.^0')
 elseif cad then
     CreateThread(function()
         Wait(2000)

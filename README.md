@@ -4,7 +4,7 @@ A free, open-source bank for FiveM by **LWK Development**. Animated 3D UI, real 
 
 ![Overview](.github/showcase.png)
 
-Works with **Qbox, QBCore and ESX** (detected automatically), and with **[CDECAD](#cdecad)**, where a player's bank balance is their [CDECAD](https://cdecad.com/) civilian's account.
+Works with **Qbox, QBCore, ESX and ND_Core** (detected automatically), and with **[CDECAD](#cdecad)**, where a player's bank balance is their [CDECAD](https://cdecad.com/) civilian's account.
 
 ## Features
 
@@ -31,7 +31,8 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | qbox | ✅ | |
 | qb-core | ✅ | |
 | esx | ✅ | |
-| CDECAD | ✅ | Set `framework = 'cdecad'`. Runs alone or on top of the three above. See [CDECAD](#cdecad) |
+| ND_Core | ✅ | Bank and cash are the character's ND money; business accounts follow the character's job group and its boss ranks |
+| CDECAD | ✅ | Set `framework = 'cdecad'`. Runs alone or on top of Qbox, QBCore or ESX. See [CDECAD](#cdecad) |
 | custom | ⚠️ | Requires manual implementation (`config/bridge/framework.lua`) |
 
 | Interactions | Status | Notes |
@@ -90,7 +91,7 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | --- | --- |
 | [ox_lib](https://github.com/overextended/ox_lib) | callbacks, notifications, commands, progress bar, cron |
 | [oxmysql](https://github.com/overextended/oxmysql) | database |
-| qbx_core, qb-core **or** es_extended | your framework (optional in CDECAD mode) |
+| qbx_core, qb-core, es_extended **or** ND_Core | your framework (optional in CDECAD mode) |
 | CDECAD *(optional)* | the CDECAD resource and its `server.cfg` convars, for [CDECAD mode](#cdecad) |
 | ox_target or qb-target *(optional)* | look-at interaction. Without one, players get a "Press E" prompt |
 | ox_inventory, qb-inventory or qs-inventory *(optional)* | cards and receipts as items |
@@ -270,7 +271,7 @@ Players' main bank balance is framework money in all of these banks, so it is al
 | Command | Who | What |
 | --- | --- | --- |
 | `/bankconfig` | admins | In-game settings editor |
-| `/bankadmin <id or identifier>` | admins | A player's accounts, cards, loans and credit score |
+| `/bankadmin <id or identifier>` | admins | A player's accounts, cards, loans and credit score. A number is a server id when that player is online; use `char:<id>` to mean a character id instead (ND_Core's are numbers) |
 | `/bankpin <id or identifier> <last 4>` | admins | Reset a card's PIN (the new PIN is sent to the player) |
 | `/bankunfreeze <id or identifier> <last 4>` | admins | Unfreeze a card that was locked by wrong PINs |
 | `/bankscore <id or identifier> <300-850>` | admins | Set a credit score |

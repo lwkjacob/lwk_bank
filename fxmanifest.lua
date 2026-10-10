@@ -5,7 +5,7 @@ lua54 'yes'
 name 'lwk_bank'
 author 'LWK Development'
 version '1.3.0'
-description 'LWK Bank - banking for QBCore, Qbox and ESX'
+description 'LWK Bank - banking for QBCore, Qbox, ESX and ND_Core'
 repository 'https://github.com/lwkjacob/lwk_bank'
 
 ui_page 'web/dist/index.html'
