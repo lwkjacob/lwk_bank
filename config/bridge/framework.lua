@@ -4,6 +4,7 @@
 --
 -- ND_Core: the identifier is the character id (nd_characters.charid), money is the
 -- character's cash/bank, and the job is the group ND marks isJob.
+-- ND_Core 1.x (before 2.0) is told apart by its version and read through the block below.
 --
 -- CDECAD support (Config.framework = 'cdecad', or auto when CDECAD runs with no framework):
 --   * the player is their active /setciv civilian, set by CDECAD; identifier is its SSN, name is its name
@@ -53,18 +54,58 @@ local function core()
     if base == 'esx' and not ESX then ESX = exports.es_extended:getSharedObject() end
 end
 
+-- 'cash' | 'bank' -> the framework's account name
+local function moneyType(kind)
+    if base == 'esx' then return kind == 'cash' and 'money' or 'bank' end
+    return kind
+end
+
+-- ND_Core 1.x ------------------------------------------------------------------------
+-- The ND_Core before 2.0 shares only the name: one NDCore object from GetCoreObject, characters
+-- in `characters`, and a job that is a plain name with a rank and no boss. The top rank of a
+-- group listed in its config (config_client.lua, groups) is taken as the boss. A 1.x character
+-- is handed on in the shape of a 2.x player, so the rest of this file reads both the same way.
+local nd1 = base == 'nd' and (tonumber((GetResourceMetadata('ND_Core', 'version', 0) or ''):match('^%d+')) or 2) < 2
+local ND_CHARS = nd1 and { tbl = 'characters', id = 'character_id', first = 'first_name', last = 'last_name' }
+    or { tbl = 'nd_characters', id = 'charid', first = 'firstname', last = 'lastname' }
+
+local ND1
+local function nd1Core()
+    ND1 = ND1 or exports.ND_Core:GetCoreObject()
+    return ND1
+end
+
+--- A group's ranks as the 1.x config lists them (lowest first) and its name as spelt there, or nil.
+local function nd1Ranks(job)
+    for name, ranks in pairs(nd1Core().Config.groups or {}) do
+        if name:lower() == tostring(job):lower() then return ranks, name end
+    end
+end
+
+local function nd1Player(src)
+    local nd = nd1Core()
+    local c = nd.Functions.GetPlayer(tonumber(src))
+    if not c then return nil end
+    local ranks, group = nd1Ranks(c.job)
+    local held = type(c.data) == 'table' and type(c.data.groups) == 'table' and c.data.groups[group or c.job] or {}
+    local rank = tonumber(held.rank) or 1
+    return {
+        id = c.id, cash = c.cash, bank = c.bank, job = c.job,
+        fullname = (('%s %s'):format(c.firstName or '', c.lastName or ''):gsub('^%s+', ''):gsub('%s+$', '')),
+        jobInfo = c.job and { label = c.job, rank = rank, isBoss = ranks ~= nil and rank == #ranks },
+        -- 1.x returns nothing from either: it writes the database and re-reads the balance before coming back.
+        addMoney = function(kind, amount, reason) nd.Functions.AddMoney(amount, src, kind, reason) return true end,
+        deductMoney = function(kind, amount, reason) nd.Functions.DeductMoney(amount, src, kind, reason) return true end,
+    }
+end
+
 local function player(src)
     core()
     if base == 'qbox' then return exports.qbx_core:GetPlayer(src) end
     if base == 'qb' then return QB.Functions.GetPlayer(src) end
     if base == 'esx' then return ESX.GetPlayerFromId(src) end
+    if base == 'nd' and nd1 then return nd1Player(src) end
     if base == 'nd' then return exports.ND_Core:getPlayer(src) end
-end
-
--- 'cash' | 'bank' -> the framework's account name
-local function moneyType(kind)
-    if base == 'esx' then return kind == 'cash' and 'money' or 'bank' end
-    return kind
 end
 
 --- The character's own id as LWK Bank stores it (a string).
@@ -379,8 +420,9 @@ function Bridge.sourceOf(identifier)
     end
     if fw == 'nd' then
         local id = tonumber(identifier)
-        local p = id and exports.ND_Core:getPlayers('id', id, true)[1]
-        return p and p.source
+        local p
+        if nd1 then p = id and nd1Core().Functions.GetPlayerByCharacterId(id) else p = id and exports.ND_Core:getPlayers('id', id, true)[1] end
+        return p and tonumber(p.source)
     end
 end
 
@@ -399,7 +441,7 @@ function Bridge.addBankOffline(identifier, amount)
             { amount, identifier }) > 0
     end
     if fw == 'nd' then
-        return MySQL.update.await('UPDATE nd_characters SET bank = bank + ? WHERE charid = ?', { amount, tonumber(identifier) }) > 0
+        return MySQL.update.await(('UPDATE %s SET bank = bank + ? WHERE %s = ?'):format(ND_CHARS.tbl, ND_CHARS.id), { amount, tonumber(identifier) }) > 0
     end
     return false
 end
@@ -418,7 +460,7 @@ function Bridge.removeBankOffline(identifier, amount)
             { amount, identifier, amount }) > 0
     end
     if fw == 'nd' then
-        return MySQL.update.await('UPDATE nd_characters SET bank = bank - ? WHERE charid = ? AND bank >= ?',
+        return MySQL.update.await(('UPDATE %s SET bank = bank - ? WHERE %s = ? AND bank >= ?'):format(ND_CHARS.tbl, ND_CHARS.id),
             { amount, tonumber(identifier), amount }) > 0
     end
     return false
@@ -442,7 +484,8 @@ function Bridge.offlineName(identifier)
         return row and ('%s %s'):format(row.firstname, row.lastname) or identifier
     end
     if fw == 'nd' then
-        local row = MySQL.single.await('SELECT firstname, lastname FROM nd_characters WHERE charid = ?', { tonumber(identifier) })
+        local row = MySQL.single.await(('SELECT %s AS firstname, %s AS lastname FROM %s WHERE %s = ?'):format(
+            ND_CHARS.first, ND_CHARS.last, ND_CHARS.tbl, ND_CHARS.id), { tonumber(identifier) })
         return row and ('%s %s'):format(row.firstname, row.lastname) or identifier
     end
     return identifier
@@ -485,6 +528,9 @@ function Bridge.groupLabel(name)
         g = QB.Shared.Jobs[name] or QB.Shared.Gangs[name]
     elseif base == 'esx' then
         g = ESX.GetJobs()[name]
+    elseif base == 'nd' and nd1 then
+        local _, spelt = nd1Ranks(name)
+        return spelt
     elseif base == 'nd' then
         g = exports.ND_Core:getGroupData(name)
     end
@@ -506,6 +552,8 @@ function Bridge.groups()
         take(QB.Shared.Gangs)
     elseif base == 'esx' then
         take(ESX.GetJobs())
+    elseif base == 'nd' and nd1 then
+        for name in pairs(nd1Core().Config.groups or {}) do out[name] = name end
     elseif base == 'nd' then
         for _, g in ipairs(exports.ND_Core:getAllGroups() or {}) do out[g.name] = g.label or g.name end
     end

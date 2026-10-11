@@ -31,7 +31,7 @@ Everything is detected automatically. Each one can also be forced in `config/con
 | qbox | ✅ | |
 | qb-core | ✅ | |
 | esx | ✅ | |
-| ND_Core | ✅ | Bank and cash are the character's ND money; business accounts follow the character's job group and its boss ranks |
+| ND_Core | ✅ | 2.x and 1.x. Bank and cash are the character's ND money; business accounts follow the character's job group and its boss ranks. On 1.x a job has no boss: the top rank of a group listed under `groups` in ND_Core's `config_client.lua` is treated as one |
 | CDECAD | ✅ | Set `framework = 'cdecad'`. Runs alone or on top of Qbox, QBCore or ESX. See [CDECAD](#cdecad) |
 | custom | ⚠️ | Requires manual implementation (`config/bridge/framework.lua`) |
 
