@@ -61,6 +61,12 @@ local function player(src)
     if base == 'nd' then return exports.ND_Core:getPlayer(src) end
 end
 
+-- 'cash' | 'bank' -> the framework's account name
+local function moneyType(kind)
+    if base == 'esx' then return kind == 'cash' and 'money' or 'bank' end
+    return kind
+end
+
 --- The character's own id as LWK Bank stores it (a string).
 local function characterId(p)
     if base == 'esx' then return p.getIdentifier() end
@@ -95,12 +101,6 @@ local function charRemove(p, kind, amount, reason)
     end
     if base == 'nd' then return p.deductMoney(kind, amount, reason) == true end
     return p.Functions.RemoveMoney(kind, amount, reason) == true
-end
-
--- 'cash' | 'bank' -> the framework's account name
-local function moneyType(kind)
-    if base == 'esx' then return kind == 'cash' and 'money' or 'bank' end
-    return kind
 end
 
 -- CDECAD ----------------------------------------------------------------------------
