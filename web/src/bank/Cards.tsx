@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Card, CardTier } from '../nui';
 import { useBank } from '../store';
 import { HoldButton, Icon } from '../fx';
-import { cardExpiry, daysUntil } from '../logic';
+import { cardExpiry, cardLook, daysUntil } from '../logic';
 import { Dialog, ErrorLine, Progress, SubmitButton, Toggle, useAction } from '../ui';
 import { Card3D } from '../atm/Card3D';
 import { AccountPills } from './Overview';
@@ -45,7 +45,7 @@ export function Cards({ active, accountId, setAccountId }: SectionProps) {
       <div className="cards-main">
         <div className="cards-stage" data-reveal>
           {card ? (
-            ready ? <Card3D card={card} bankName={cfg.bankName} accent={cfg.accent} running={active} /> : null
+            ready ? <Card3D card={card} bankName={cfg.bankName} accent={cfg.accent} tiers={cfg.cards.tiers} running={active} /> : null
           ) : (
             <div className="empty-state">
               <Icon name="card" size={2} />
@@ -58,7 +58,7 @@ export function Cards({ active, accountId, setAccountId }: SectionProps) {
         <div className="card-strip" data-reveal>
           {data.cards.map((c) => (
             <button key={c.id} className="card-chip" aria-pressed={c.id === card?.id} onClick={() => setCardId(c.id)}>
-              <span className={`card-swatch tier-${c.tier}`} aria-hidden="true" />
+              <span className="card-swatch" style={cardLook(cfg.cards.tiers[c.tier]).style} aria-hidden="true" />
               <span className="mono">··{c.last4}</span>
               <span className={`dot is-${c.status}`} aria-label={t('status_' + c.status)} />
             </button>
@@ -236,16 +236,19 @@ function OrderDialog({ accountId, setAccountId, onClose }: Pick<SectionProps, 'a
         <span className="mono muted">{t('linked_account')}</span>
         <AccountPills accountId={accountId} setAccountId={setAccountId} />
         <div className="tier-grid" role="radiogroup" aria-label={t('card_type')}>
-          {TIERS.map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={tier === k} className="tier-opt" onClick={() => setTier(k)}>
-              <span className={`tier-face tier-${k}`} aria-hidden="true">
-                <span className="mono">{cfg.bankName}</span>
-              </span>
-              <strong>{t('tier_' + k)}</strong>
-              <span className="mono muted">{t('per_day', { amount: money(cfg.cards.tiers[k].dailyLimit) })}</span>
-              <span className="num">{money(cfg.cards.tiers[k].fee)}</span>
-            </button>
-          ))}
+          {TIERS.map((k) => {
+            const look = cardLook(cfg.cards.tiers[k]);
+            return (
+              <button key={k} type="button" role="radio" aria-checked={tier === k} className="tier-opt" onClick={() => setTier(k)}>
+                <span className="tier-face" style={look.style} aria-hidden="true">
+                  {!look.hideText && <span className="mono">{cfg.bankName}</span>}
+                </span>
+                <strong>{t('tier_' + k)}</strong>
+                <span className="mono muted">{t('per_day', { amount: money(cfg.cards.tiers[k].dailyLimit) })}</span>
+                <span className="num">{money(cfg.cards.tiers[k].fee)}</span>
+              </button>
+            );
+          })}
         </div>
         <p className="muted small">
           {t('order_note', { days: cfg.cards.validDays, amount: money(cfg.cards.activationFee) })}

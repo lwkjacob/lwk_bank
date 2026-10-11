@@ -180,6 +180,17 @@ export interface CreditBand {
   adjust: number;
 }
 
+export interface TierConfig {
+  dailyLimit: number;
+  fee: number;
+  /** Hex colour of the card. */
+  cardColor: string;
+  /** Picture for the card front: a file in images/ or an https link. '' = none. */
+  image: string;
+  /** With an image: print nothing over it. */
+  hideText: boolean;
+}
+
 export interface BankConfig {
   bankName: string;
   /** Intl locale for numbers/dates (from the locale file's meta.intl), e.g. 'de-DE'. */
@@ -201,7 +212,7 @@ export interface BankConfig {
   };
   sound: { enabled: boolean; volume: number };
   cards: {
-    tiers: Record<CardTier, { dailyLimit: number; fee: number }>;
+    tiers: Record<CardTier, TierConfig>;
     maxCards: number;
     maxActive: number;
     activationFee: number;
@@ -297,9 +308,9 @@ export const DEFAULT_CONFIG: BankConfig = {
   sound: { enabled: true, volume: 0.5 },
   cards: {
     tiers: {
-      standard: { dailyLimit: 5_000, fee: 250 },
-      premium: { dailyLimit: 25_000, fee: 1_500 },
-      gold: { dailyLimit: 100_000, fee: 7_500 },
+      standard: { dailyLimit: 5_000, fee: 250, cardColor: '#30342f', image: '', hideText: false },
+      premium: { dailyLimit: 25_000, fee: 1_500, cardColor: '#23401c', image: '', hideText: false },
+      gold: { dailyLimit: 100_000, fee: 7_500, cardColor: '#e2c06a', image: '', hideText: false },
     },
     maxCards: 10,
     maxActive: 3,

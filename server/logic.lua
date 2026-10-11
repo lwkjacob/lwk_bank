@@ -190,10 +190,18 @@ local function nonNegative(t, path, skip)
     end
 end
 
+local function hex(v) return v:match('^#%x%x%x%x%x%x$') or v:match('^#%x%x%x$') end
+
+--- A card picture: none, a file in images/ or an https link. It ends up in a CSS url(),
+--- so nothing that could close one.
+local function cardImage(v)
+    return v == '' or v:match('^[%w_%-]+%.%a+$') or v:match('^https://[^%s"\'()\\]+$')
+end
+
 --- Rules a type check can't express. Returns the path of the first bad field, or nil.
 function Logic.checkConfig(c)
     if not c.bankName:find('%S') or #c.bankName > 32 then return 'bankName' end
-    if not (c.accent:match('^#%x%x%x%x%x%x$') or c.accent:match('^#%x%x%x$')) then return 'accent' end
+    if not hex(c.accent) then return 'accent' end
     if not c.currency:match('^%u%u%u$') then return 'currency' end
     if not c.accounts.ibanPrefix:match('^%u%u?%u?%u?$') then return 'accounts.ibanPrefix' end
     if c.sound.volume > 1 then return 'sound.volume' end
@@ -202,6 +210,11 @@ function Logic.checkConfig(c)
         if bad then return bad end
     end
     if c.cards.maxCards < 1 or c.cards.pinAttempts < 1 then return 'cards' end
+    -- A config.lua from before card looks has neither field: the UI uses its defaults.
+    for name, t in pairs(c.cards.tiers) do
+        if t.cardColor and not hex(t.cardColor) then return ('cards.tiers.%s.cardColor'):format(name) end
+        if t.image and not cardImage(t.image) then return ('cards.tiers.%s.image'):format(name) end
+    end
     if #c.loans.plans == 0 then return 'loans.plans' end
     local ids = {}
     for i, p in ipairs(c.loans.plans) do

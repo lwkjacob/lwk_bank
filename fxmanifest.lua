@@ -15,7 +15,7 @@ files {
   'web/dist/assets/*',
   'web/dist/sounds/*',
   'config/locales/*.json',
-  'images/*.png',
+  'images/*',
 }
 
 shared_scripts {

@@ -1,4 +1,4 @@
-import type { Card } from '../nui';
+import { DEFAULT_CONFIG, type Card } from '../nui';
 import type { CardScene } from './card-scene';
 
 /* The 3D card's expensive parts (three.js download/parse, WebGL context, lighting
@@ -21,7 +21,7 @@ let stage: Promise<CardStage> | null = null;
 export function cardStage(): Promise<CardStage> {
   stage ??= import('./card-scene').then(async ({ createCardScene }) => {
     const canvas = document.createElement('canvas');
-    const scene = await createCardScene(canvas, PLACEHOLDER, '', '#c8f031');
+    const scene = await createCardScene(canvas, PLACEHOLDER, '', '#c8f031', DEFAULT_CONFIG.cards.tiers);
     scene.setRunning(false);
     return { canvas, scene };
   });

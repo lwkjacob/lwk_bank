@@ -6,6 +6,7 @@ import { parseAmount, useBank } from '../store';
 import { Brand, CountUp, Icon, Scramble } from '../fx';
 import { Card3D, type Card3DHandle } from './Card3D';
 import { play } from '../sound';
+import { cardLook } from '../logic';
 
 type Step = 'card' | 'pin' | 'menu';
 const QUICK = [100, 200, 500, 1_000, 2_500];
@@ -81,7 +82,7 @@ function CardStep({ cards, card, setCardId, onInserted }: { cards: Card[]; card:
   return (
     <div className="atm-card" data-step>
       <div className="atm-stage">
-        <Card3D ref={card3d} card={card} bankName={data.config.bankName} accent={data.config.accent} />
+        <Card3D ref={card3d} card={card} bankName={data.config.bankName} accent={data.config.accent} tiers={data.config.cards.tiers} />
         <div className={`slot-line ${inserting ? 'is-hot' : ''}`} aria-hidden="true" />
         <span className="mono muted atm-hint">{t('card_hint')}</span>
       </div>
@@ -96,7 +97,7 @@ function CardStep({ cards, card, setCardId, onInserted }: { cards: Card[]; card:
             return (
               <li key={c.id}>
                 <button className="card-row" aria-pressed={c.id === card.id} disabled={inserting} onClick={() => setCardId(c.id)}>
-                  <span className={`card-swatch tier-${c.tier}`} aria-hidden="true" />
+                  <span className="card-swatch" style={cardLook(data.config.cards.tiers[c.tier]).style} aria-hidden="true" />
                   <span className="card-row-main">
                     <span>
                       {t('tier_' + c.tier)} · •• {c.last4}

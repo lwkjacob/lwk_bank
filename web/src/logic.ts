@@ -1,4 +1,4 @@
-import type { BankConfig, CreditBand } from './nui';
+import type { BankConfig, CreditBand, TierConfig } from './nui';
 
 /* Pure helpers: no React, no DOM. Checked by logic.check.ts. */
 
@@ -57,6 +57,41 @@ export function accentTokens(hex: string): Record<string, string> | null {
     '--accent-dim': `rgba(${r}, ${g}, ${b}, 0.14)`,
     '--accent-grid': `rgba(${r}, ${g}, ${b}, 0.16)`,
     '--accent-ink': ink,
+  };
+}
+
+/* ---------- card look: one colour, or a picture, per tier ---------- */
+
+export interface CardLook {
+  /** Gradient, top left to bottom right. */
+  bg: [string, string];
+  ink: string;
+  edge: string;
+  bright: boolean;
+  /** URL of the front picture, or ''. */
+  image: string;
+  hideText: boolean;
+  /** For the flat previews (swatches, order dialog). */
+  style: { background: string; color: string };
+}
+
+export function cardLook(tier: Pick<TierConfig, 'cardColor' | 'image' | 'hideText'>): CardLook {
+  const rgb = hexToRgb(tier.cardColor) ?? [48, 52, 47];
+  const bright = luminance(rgb) > 0.35;
+  const shade = (k: number) => `rgb(${rgb.map((v) => Math.round(v * k)).join(', ')})`;
+  // Bright cards fade less, or gold turns to mud.
+  const bg: [string, string] = [shade(1), shade(bright ? 0.6 : 0.4)];
+  const ink = bright ? '#1d1607' : '#eceeea';
+  // A bare file name is in the resource's images/ folder, two levels up from web/dist/.
+  const image = /^https:\/\//.test(tier.image) ? tier.image : tier.image && `../../images/${tier.image}`;
+  return {
+    bg,
+    ink,
+    edge: shade(bright ? 0.7 : 0.5),
+    bright,
+    image,
+    hideText: !!image && tier.hideText,
+    style: { background: image ? `center / cover url("${image}")` : `linear-gradient(135deg, ${bg[0]}, ${bg[1]})`, color: ink },
   };
 }
 

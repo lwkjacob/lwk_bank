@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import gsap from 'gsap';
-import type { Card } from '../nui';
-import { cardExpiry } from '../logic';
+import type { BankConfig, Card } from '../nui';
+import { cardExpiry, cardLook, type CardLook } from '../logic';
 
 /* One WebGL card, built once while the UI loads (see card-stage.ts) and reused by the
  * Cards tab and the ATM. It only renders while one of them is on screen. */
@@ -12,11 +12,28 @@ const H = 2.125;
 const D = 0.035;
 const R = 0.16;
 
-const TIERS = {
-  standard: { bg: ['#30342f', '#121412'], ink: '#eceeea', line: 'rgba(236,238,234,0.06)', edge: '#1a1c1a', metal: 0.2 },
-  premium: { bg: ['#23401c', '#081206'], ink: '#eceeea', line: 'rgba(200,240,49,0.10)', edge: '#0d1a0a', metal: 0.35 },
-  gold: { bg: ['#e2c06a', '#8c6a22'], ink: '#1d1607', line: 'rgba(29,22,7,0.10)', edge: '#a07c2e', metal: 0.75 },
-} as const;
+type Tiers = BankConfig['cards']['tiers'];
+
+// Colours come from the config (cardLook); how metallic each tier shines stays fixed.
+const METAL = { standard: 0.2, premium: 0.35, gold: 0.75 } as const;
+
+// Tier pictures, loaded once. One that fails (missing file, a host without CORS headers)
+// resolves to null and the card keeps its colour.
+const art = new Map<string, Promise<HTMLImageElement | null>>();
+function loadArt(src: string) {
+  let p = art.get(src);
+  if (!p) {
+    p = new Promise((done) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // WebGL refuses a texture drawn from a tainted canvas
+      img.onload = () => done(img);
+      img.onerror = () => done(null);
+      img.src = src;
+    });
+    art.set(src, p);
+  }
+  return p;
+}
 
 function roundedRect(w: number, h: number, r: number) {
   const s = new THREE.Shape();
@@ -55,33 +72,40 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 const DISPLAY = '"Archivo Variable", sans-serif';
 const MONO = '"JetBrains Mono Variable", monospace';
 
-function drawFace(card: Card, bankName: string, accent: string, back: boolean) {
-  const t = TIERS[card.tier];
+function drawFace(card: Card, t: CardLook, bankName: string, accent: string, back: boolean, picture?: HTMLImageElement) {
   const c = document.createElement('canvas');
   c.width = 1024;
   c.height = 646;
   const ctx = c.getContext('2d')!;
 
-  const g = ctx.createLinearGradient(0, 0, 1024, 646);
-  g.addColorStop(0, t.bg[0]);
-  g.addColorStop(1, t.bg[1]);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 1024, 646);
+  if (picture) {
+    // Cover the face: a picture that isn't card-shaped is cropped, not stretched.
+    const k = Math.max(1024 / picture.width, 646 / picture.height);
+    ctx.drawImage(picture, (1024 - picture.width * k) / 2, (646 - picture.height * k) / 2, picture.width * k, picture.height * k);
+  } else {
+    const g = ctx.createLinearGradient(0, 0, 1024, 646);
+    g.addColorStop(0, t.bg[0]);
+    g.addColorStop(1, t.bg[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 1024, 646);
 
-  // Fine diagonal hatching, echoing the grid floor.
-  ctx.strokeStyle = t.line;
-  ctx.lineWidth = 2;
-  for (let x = -646; x < 1024; x += 22) {
-    ctx.beginPath();
-    ctx.moveTo(x, 646);
-    ctx.lineTo(x + 646, 0);
-    ctx.stroke();
+    // Fine diagonal hatching, echoing the grid floor.
+    ctx.strokeStyle = t.ink;
+    ctx.globalAlpha = 0.08;
+    ctx.lineWidth = 2;
+    for (let x = -646; x < 1024; x += 22) {
+      ctx.beginPath();
+      ctx.moveTo(x, 646);
+      ctx.lineTo(x + 646, 0);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 
   ctx.fillStyle = t.ink;
   ctx.textBaseline = 'alphabetic';
 
-  if (!back) {
+  if (!back && !(picture && t.hideText)) {
     ctx.font = `700 46px ${DISPLAY}`;
     ctx.fillText(bankName.toUpperCase(), 72, 104);
     ctx.font = `500 22px ${MONO}`;
@@ -132,10 +156,10 @@ function drawFace(card: Card, bankName: string, accent: string, back: boolean) {
     ctx.save();
     ctx.translate(912, 556);
     ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = card.tier === 'gold' ? t.ink : accent;
+    ctx.fillStyle = t.bright ? t.ink : accent;
     ctx.fillRect(-26, -26, 52, 52);
     ctx.restore();
-  } else {
+  } else if (back) {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 70, 1024, 118);
     ctx.fillStyle = 'rgba(236,238,234,0.92)';
@@ -163,7 +187,7 @@ function drawFace(card: Card, bankName: string, accent: string, back: boolean) {
 
 export interface CardScene {
   /** Put a card on screen instantly (new branding, pose reset) and play the entrance. */
-  show(card: Card, bankName: string, accent: string): void;
+  show(card: Card, bankName: string, accent: string, tiers: Tiers): void;
   /** Swap to another card with a quick turn. */
   setCard(card: Card): void;
   /** Pause/resume rendering, e.g. while the Cards tab is out of view. */
@@ -173,7 +197,7 @@ export interface CardScene {
   dispose(): void;
 }
 
-export async function createCardScene(canvas: HTMLCanvasElement, card: Card, bankName: string, accent: string): Promise<CardScene> {
+export async function createCardScene(canvas: HTMLCanvasElement, card: Card, bankName: string, accent: string, tiers: Tiers): Promise<CardScene> {
   // Canvas text needs the web fonts decoded first, or the card prints in a fallback face.
   await Promise.all([document.fonts.load(`700 46px ${DISPLAY}`), document.fonts.load(`500 30px ${MONO}`)]).catch(() => {});
 
@@ -216,17 +240,26 @@ export async function createCardScene(canvas: HTMLCanvasElement, card: Card, ban
   pivot.add(body);
   scene.add(pivot);
 
-  let brand = { bankName, accent };
-  const applyCard = (c: Card) => {
-    const t = TIERS[c.tier];
+  let brand = { bankName, accent, tiers };
+  let current = card;
+  const paint = (c: Card, t: CardLook, picture?: HTMLImageElement) => {
     for (const [mesh, isBack] of [[front, false], [back, true]] as const) {
       const m = mesh.material as THREE.MeshPhysicalMaterial;
+      const pic = isBack ? undefined : picture;
       m.map?.dispose();
-      m.map = drawFace(c, brand.bankName, brand.accent, isBack);
-      m.metalness = t.metal;
+      m.map = drawFace(c, t, brand.bankName, brand.accent, isBack, pic);
+      // A picture under a metallic finish goes dark and mirror-like.
+      m.metalness = pic ? 0.2 : METAL[c.tier];
       m.needsUpdate = true;
     }
     (edge.material as THREE.MeshPhysicalMaterial).color.set(t.edge);
+  };
+  const applyCard = (c: Card) => {
+    current = c;
+    const t = cardLook(brand.tiers[c.tier]);
+    paint(c, t);
+    // The picture goes on once it has loaded, unless another card was put up meanwhile.
+    if (t.image) loadArt(t.image).then((img) => img && current === c && paint(c, t, img));
   };
   applyCard(card);
 
@@ -277,8 +310,8 @@ export async function createCardScene(canvas: HTMLCanvasElement, card: Card, ban
   loop();
 
   return {
-    show(c, name, color) {
-      brand = { bankName: name, accent: color };
+    show(c, name, color, tiers) {
+      brand = { bankName: name, accent: color, tiers };
       // Reset whatever the last screen left behind (e.g. the card inside the ATM slot).
       gsap.killTweensOf([body.rotation, body.position, flipState]);
       floating = true;

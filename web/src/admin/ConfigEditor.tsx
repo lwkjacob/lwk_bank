@@ -199,7 +199,7 @@ function Field({ ctx, name, path, value, template }: { ctx: FieldCtx; name: stri
     <label className="cfg-field">
       <span className="mono muted">{label(name)}</span>
       <span className="cfg-input">
-        {name === 'accent' && <input type="color" className="cfg-color" value={String(value)} onChange={(e) => update(path, e.target.value)} aria-label={label(name)} />}
+        {(name === 'accent' || name === 'cardColor') && <input type="color" className="cfg-color" value={String(value)} onChange={(e) => update(path, e.target.value)} aria-label={label(name)} />}
         {name === 'volume' && typeof value === 'number' ? (
           <input type="range" className="range" min={0} max={1} step={0.05} value={value} aria-label={label(name)} onChange={(e) => update(path, Number(e.target.value))} />
         ) : (

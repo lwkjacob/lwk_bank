@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import type { Card } from '../nui';
+import type { BankConfig, Card } from '../nui';
+import { cardLook } from '../logic';
 import type { CardScene } from './card-scene';
 import { cardStage } from './card-stage';
 
@@ -8,15 +9,16 @@ export interface Card3DHandle {
 }
 
 /** Click to flip, move the pointer to tilt. Borrows the card canvas prebuilt at startup. */
-export const Card3D = forwardRef<Card3DHandle, { card: Card; bankName: string; accent: string; running?: boolean }>(function Card3D({ card, bankName, accent, running = true }, ref) {
+export const Card3D = forwardRef<Card3DHandle, { card: Card; bankName: string; accent: string; tiers: BankConfig['cards']['tiers']; running?: boolean }>(function Card3D({ card, bankName, accent, tiers, running = true }, ref) {
   const holder = useRef<HTMLDivElement>(null);
   const scene = useRef<CardScene | null>(null);
   // Repaint when the card or anything printed on it changes (e.g. a renewal moves the expiry).
   const face = `${card.id}:${card.expiresAt}:${card.holder}`;
   const shown = useRef(face);
   const [failed, setFailed] = useState(false);
-  const latest = useRef({ card, bankName, accent, running });
-  latest.current = { card, bankName, accent, running };
+  const latest = useRef({ card, bankName, accent, tiers, running });
+  latest.current = { card, bankName, accent, tiers, running };
+  const look = cardLook(tiers[card.tier]);
 
   useEffect(() => {
     let dead = false;
@@ -29,7 +31,7 @@ export const Card3D = forwardRef<Card3DHandle, { card: Card; bankName: string; a
         canvas.onclick = () => s.scene.flip();
         canvas.setAttribute('role', 'img');
         holder.current!.appendChild(canvas);
-        s.scene.show(l.card, l.bankName, l.accent);
+        s.scene.show(l.card, l.bankName, l.accent, l.tiers);
         s.scene.setRunning(l.running);
         shown.current = `${l.card.id}:${l.card.expiresAt}:${l.card.holder}`;
         scene.current = s.scene;
@@ -63,9 +65,9 @@ export const Card3D = forwardRef<Card3DHandle, { card: Card; bankName: string; a
     <div className="card3d" ref={holder}>
       {failed && (
         // WebGL unavailable: flat fallback so the ATM still works.
-        <div className={`card-flat tier-${card.tier}`}>
-          <span>{bankName}</span>
-          <span className="mono">•••• {card.last4}</span>
+        <div className="card-flat" style={look.style}>
+          {!look.hideText && <span>{bankName}</span>}
+          {!look.hideText && <span className="mono">•••• {card.last4}</span>}
         </div>
       )}
     </div>
