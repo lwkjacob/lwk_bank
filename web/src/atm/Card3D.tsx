@@ -56,7 +56,7 @@ export const Card3D = forwardRef<Card3DHandle, { card: Card; bankName: string; a
   }, [face, card]);
 
   useEffect(() => {
-    holder.current?.querySelector('canvas')?.setAttribute('aria-label', `${card.tier} card ending ${card.last4}. Click to flip.`);
+    holder.current?.querySelector('canvas')?.setAttribute('aria-label', `${tiers[card.tier].name || card.tier} card ending ${card.last4}. Click to flip.`);
   });
 
   useImperativeHandle(ref, () => ({ insert: () => scene.current?.insert() ?? Promise.resolve() }), []);

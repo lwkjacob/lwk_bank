@@ -182,7 +182,7 @@ Missing strings fall back to English, so a half-done translation still works. Pu
 
 Change `bankName`, `accent` (any hex colour; text on it switches between dark and light automatically) and `currency` (any ISO code, e.g. `EUR`) in `/bankconfig` → General.
 
-Each card type has its own look in `/bankconfig` → Cards: `cardColor` (any hex colour), or `image` to use your own picture as the card front. Put the picture in this resource's `images/` folder and enter its file name (`gold.png`), or enter an `https` link to one. Make it 1024 × 646 px, the shape of a real card; anything else is cropped to fit. Turn on `hideText` to print nothing over the picture (no bank name, chip or number). A picture that can't be loaded leaves the card in its colour; a link only works if its host allows other sites to load it (CORS), a file in `images/` always does.
+Each card type has its own name and look in `/bankconfig` → Cards: `name` (instead of Standard, Premium or Gold), `cardColor` (any hex colour), or `image` to use your own picture as the card front. Put the picture in this resource's `images/` folder and enter its file name (`gold.png`), or enter an `https` link to one. Make it 1024 × 646 px, the shape of a real card; anything else is cropped to fit. Turn on `hideText` to print nothing over the picture (no bank name, chip or number). A picture that can't be loaded leaves the card in its colour; a link only works if its host allows other sites to load it (CORS), a file in `images/` always does.
 
 ### Notifications
 

@@ -480,6 +480,7 @@
     "cfg_hint_item": "Inventory item name",
     "cfg_hint_tiers": "Daily spending limit, order fee and look of each card type",
     "cfg_cardColor": "Card colour",
+    "cfg_hint_name": "What this card type is called. Leave empty for Standard, Premium or Gold",
     "cfg_hint_image": "Picture for the card front: a file in the images folder (gold.png) or an https link. 1024 × 646 px",
     "cfg_hint_hideText": "With an image, print nothing over it",
     "cfg_hint_plans": "Loan plans players can choose. Rate is the total interest %",

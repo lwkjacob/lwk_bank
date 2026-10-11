@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
-import { callBank, type BankData, type Result } from './nui';
+import { callBank, type BankData, type CardTier, type Result } from './nui';
 import { play, type SoundName } from './sound';
 import { makeT, type T } from './i18n';
 
@@ -16,6 +16,8 @@ interface BankCtx {
   t: T;
   /** Intl locale for numbers and dates, e.g. 'de-DE'. */
   locale: string;
+  /** A card type's name: the server owner's, or the language file's. */
+  tierName: (tier: CardTier) => string;
 }
 
 const Ctx = createContext<BankCtx | null>(null);
@@ -58,8 +60,9 @@ export function BankProvider({ data, setData, children }: { data: BankData; setD
   const money = useMemo(() => moneyFormat(locale, currency), [currency, locale]);
 
   const t = useMemo(() => makeT(data.ui), [data.ui]);
+  const tierName = (tier: CardTier) => data.config.cards.tiers[tier].name.trim() || t('tier_' + tier);
 
-  return <Ctx.Provider value={{ data, cfg: data.config, act, money, t, locale }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ data, cfg: data.config, act, money, t, locale, tierName }}>{children}</Ctx.Provider>;
 }
 
 export function useBank() {

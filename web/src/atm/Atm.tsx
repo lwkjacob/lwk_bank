@@ -67,7 +67,7 @@ export function Atm({ onClose }: { onClose: () => void }) {
 /* ---------- 1. choose + insert card ---------- */
 
 function CardStep({ cards, card, setCardId, onInserted }: { cards: Card[]; card: Card; setCardId: (id: string) => void; onInserted: () => void }) {
-  const { data, t } = useBank();
+  const { data, t, tierName } = useBank();
   const card3d = useRef<Card3DHandle>(null);
   const [inserting, setInserting] = useState(false);
   const blocked = card.status !== 'active';
@@ -100,7 +100,7 @@ function CardStep({ cards, card, setCardId, onInserted }: { cards: Card[]; card:
                   <span className="card-swatch" style={cardLook(data.config.cards.tiers[c.tier]).style} aria-hidden="true" />
                   <span className="card-row-main">
                     <span>
-                      {t('tier_' + c.tier)} · •• {c.last4}
+                      {tierName(c.tier)} · •• {c.last4}
                     </span>
                     <span className="mono muted">{acc?.name ?? t('unlinked')}</span>
                   </span>

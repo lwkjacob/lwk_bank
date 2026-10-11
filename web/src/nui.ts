@@ -181,6 +181,8 @@ export interface CreditBand {
 }
 
 export interface TierConfig {
+  /** What the card type is called. '' = the locale's tier_<key>. */
+  name: string;
   dailyLimit: number;
   fee: number;
   /** Hex colour of the card. */
@@ -308,9 +310,9 @@ export const DEFAULT_CONFIG: BankConfig = {
   sound: { enabled: true, volume: 0.5 },
   cards: {
     tiers: {
-      standard: { dailyLimit: 5_000, fee: 250, cardColor: '#30342f', image: '', hideText: false },
-      premium: { dailyLimit: 25_000, fee: 1_500, cardColor: '#23401c', image: '', hideText: false },
-      gold: { dailyLimit: 100_000, fee: 7_500, cardColor: '#e2c06a', image: '', hideText: false },
+      standard: { name: '', dailyLimit: 5_000, fee: 250, cardColor: '#30342f', image: '', hideText: false },
+      premium: { name: '', dailyLimit: 25_000, fee: 1_500, cardColor: '#23401c', image: '', hideText: false },
+      gold: { name: '', dailyLimit: 100_000, fee: 7_500, cardColor: '#e2c06a', image: '', hideText: false },
     },
     maxCards: 10,
     maxActive: 3,

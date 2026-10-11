@@ -42,13 +42,14 @@ Config = {
 
     -- Cards -----------------------------------------------------------------------
     cards = {
+        -- name: what the card type is called ('' = the language file's Standard / Premium / Gold).
         -- cardColor: the card's colour (any hex). image: a picture for the card front instead,
         -- a file in images/ ('gold.png') or an https link, 1024 x 646 px (the shape of a real
         -- card). hideText: with an image, print nothing over it (no bank name, chip, number).
         tiers = {
-            standard = { dailyLimit = 5000,   fee = 250,  cardColor = '#30342f', image = '', hideText = false },
-            premium  = { dailyLimit = 25000,  fee = 1500, cardColor = '#23401c', image = '', hideText = false },
-            gold     = { dailyLimit = 100000, fee = 7500, cardColor = '#e2c06a', image = '', hideText = false },
+            standard = { name = '', dailyLimit = 5000,   fee = 250,  cardColor = '#30342f', image = '', hideText = false },
+            premium  = { name = '', dailyLimit = 25000,  fee = 1500, cardColor = '#23401c', image = '', hideText = false },
+            gold     = { name = '', dailyLimit = 100000, fee = 7500, cardColor = '#e2c06a', image = '', hideText = false },
         },
         maxCards      = 10,
         maxActive     = 3,

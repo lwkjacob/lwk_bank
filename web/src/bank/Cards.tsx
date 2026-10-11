@@ -84,7 +84,7 @@ export function Cards({ active, accountId, setAccountId }: SectionProps) {
 }
 
 function CardDetails({ card }: { card: Card }) {
-  const { data, cfg, money, t } = useBank();
+  const { data, cfg, money, t, tierName } = useBank();
   const { busy, error, run } = useAction();
   const [limit, setLimit] = useState(card.dailyLimit);
   const [pinOpen, setPinOpen] = useState(false);
@@ -99,7 +99,7 @@ function CardDetails({ card }: { card: Card }) {
     <div className="card-details">
       <div className="card-title" data-reveal>
         <h2>
-          {t('tier_' + card.tier)} <span className="mono muted">·· {card.last4}</span>
+          {tierName(card.tier)} <span className="mono muted">·· {card.last4}</span>
         </h2>
         <span className={`badge is-${card.status}`}>{t('status_' + card.status)}</span>
       </div>
@@ -220,7 +220,7 @@ function PinDialog({ card, onClose }: { card: Card; onClose: () => void }) {
 }
 
 function OrderDialog({ accountId, setAccountId, onClose }: Pick<SectionProps, 'accountId' | 'setAccountId'> & { onClose: () => void }) {
-  const { cfg, money, t } = useBank();
+  const { cfg, money, t, tierName } = useBank();
   const { busy, error, run } = useAction();
   const [tier, setTier] = useState<CardTier>('standard');
 
@@ -243,7 +243,7 @@ function OrderDialog({ accountId, setAccountId, onClose }: Pick<SectionProps, 'a
                 <span className="tier-face" style={look.style} aria-hidden="true">
                   {!look.hideText && <span className="mono">{cfg.bankName}</span>}
                 </span>
-                <strong>{t('tier_' + k)}</strong>
+                <strong>{tierName(k)}</strong>
                 <span className="mono muted">{t('per_day', { amount: money(cfg.cards.tiers[k].dailyLimit) })}</span>
                 <span className="num">{money(cfg.cards.tiers[k].fee)}</span>
               </button>
@@ -255,7 +255,7 @@ function OrderDialog({ accountId, setAccountId, onClose }: Pick<SectionProps, 'a
         </p>
         <ErrorLine error={error} />
         <SubmitButton busy={busy} icon="card">
-          {t('order_tier', { tier: t('tier_' + tier), amount: money(cfg.cards.tiers[tier].fee) })}
+          {t('order_tier', { tier: tierName(tier), amount: money(cfg.cards.tiers[tier].fee) })}
         </SubmitButton>
       </form>
     </Dialog>

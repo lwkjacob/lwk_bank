@@ -72,7 +72,7 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 const DISPLAY = '"Archivo Variable", sans-serif';
 const MONO = '"JetBrains Mono Variable", monospace';
 
-function drawFace(card: Card, t: CardLook, bankName: string, accent: string, back: boolean, picture?: HTMLImageElement) {
+function drawFace(card: Card, t: CardLook, name: string, bankName: string, accent: string, back: boolean, picture?: HTMLImageElement) {
   const c = document.createElement('canvas');
   c.width = 1024;
   c.height = 646;
@@ -110,7 +110,7 @@ function drawFace(card: Card, t: CardLook, bankName: string, accent: string, bac
     ctx.fillText(bankName.toUpperCase(), 72, 104);
     ctx.font = `500 22px ${MONO}`;
     ctx.textAlign = 'right';
-    ctx.fillText(card.tier.toUpperCase(), 952, 100);
+    ctx.fillText(name.toUpperCase(), 952, 100);
     ctx.textAlign = 'left';
 
     // EMV chip
@@ -247,7 +247,7 @@ export async function createCardScene(canvas: HTMLCanvasElement, card: Card, ban
       const m = mesh.material as THREE.MeshPhysicalMaterial;
       const pic = isBack ? undefined : picture;
       m.map?.dispose();
-      m.map = drawFace(c, t, brand.bankName, brand.accent, isBack, pic);
+      m.map = drawFace(c, t, brand.tiers[c.tier].name.trim() || c.tier, brand.bankName, brand.accent, isBack, pic);
       // A picture under a metallic finish goes dark and mirror-like.
       m.metalness = pic ? 0.2 : METAL[c.tier];
       m.needsUpdate = true;

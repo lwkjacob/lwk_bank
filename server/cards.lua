@@ -28,7 +28,11 @@ end)
 
 local function today() return math.floor(Logic.now() / DAY) end
 
-local function tierName(t) return t:sub(1, 1):upper() .. t:sub(2) end
+--- The card type's name from the config, or its key capitalised ("Gold").
+local function tierName(t)
+    local tier = Cfg().cards.tiers[t]
+    return tier and Logic.text(tier.name, 1, 20) or (t:sub(1, 1):upper() .. t:sub(2))
+end
 
 local function metadata(card)
     return {

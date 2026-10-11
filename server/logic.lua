@@ -212,6 +212,7 @@ function Logic.checkConfig(c)
     if c.cards.maxCards < 1 or c.cards.pinAttempts < 1 then return 'cards' end
     -- A config.lua from before card looks has neither field: the UI uses its defaults.
     for name, t in pairs(c.cards.tiers) do
+        if t.name and #t.name > 20 then return ('cards.tiers.%s.name'):format(name) end
         if t.cardColor and not hex(t.cardColor) then return ('cards.tiers.%s.cardColor'):format(name) end
         if t.image and not cardImage(t.image) then return ('cards.tiers.%s.image'):format(name) end
     end
